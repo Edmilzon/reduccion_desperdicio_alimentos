@@ -34,6 +34,7 @@ mi_app_alquileres/
 │   ├── features/           # FUNCIONALIDADES POR MÓDULO (Arquitectura por capas)
 │   │   ├── auth/           # Módulo de Login/Registro
 │   │   ├── home/           # Módulo principal
+|   |   |__   
 │   ├── shared/             # WIDGETS REUTILIZABLES (Botones, Inputs, Cards globales)
 │   └── routes/             # app_routes.dart (Navegación tipo React Router)
 ├── test/                   # Unit tests y Widget tests
