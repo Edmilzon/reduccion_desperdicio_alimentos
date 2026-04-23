@@ -36,7 +36,7 @@ class CustomNavbar extends StatelessWidget {
 		),
 		BottomNavigationBarItem(
 		  icon: Icon(Icons.person), // Perfil
-		  label: 'Mi Perfil',
+		  label: 'Perfil',
 		),
 	  ],
 	);
