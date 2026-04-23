@@ -32,7 +32,7 @@ class CustomNavbar extends StatelessWidget {
 		),
 		BottomNavigationBarItem(
 		  icon: Icon(Icons.shopping_cart), // Carrito
-		  label: 'Carrito',
+		  label: 'Tienda',
 		),
 		BottomNavigationBarItem(
 		  icon: Icon(Icons.person), // Perfil
