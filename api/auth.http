@@ -1,0 +1,128 @@
+# ============================================
+# AUTH - Autenticación
+# ============================================
+# Este módulo maneja el registro, login y logout de usuarios.
+# Base URL: http://localhost:3000
+
+@baseURL = http://localhost:3000
+@token = your_jwt_token_here
+
+# ============================================
+# POST /auth/register
+# ----------------------------------
+# Descripción: Registra un nuevo usuario en el sistema.
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "name": "Juan Perez",        // OBLIGATORIO - Nombre completo
+#     "email": "juan@example.com", // OBLIGATORIO - Email válido
+#     "password": "password123"   // OBLIGATORIO - Mínimo 6 caracteres
+#   }
+# Respuesta exitosa (201):
+#   {
+#     "id": "uuid-del-usuario",
+#     "name": "Juan Perez",
+#     "email": "juan@example.com",
+#     "role": "USER",
+#     "createdAt": "2024-01-01T00:00:00.000Z"
+#   }
+# Errores comunes:
+#   - 409 Conflict: "El correo ya está registrado"
+
+###
+# Registrar nuevo usuario
+POST {{baseURL}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "password": "password123"
+}
+
+# ============================================
+# POST /auth/login
+# ----------------------------------
+# Descripción: Inicia sesión y devuelve un token JWT.
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "email": "juan@example.com", // OBLIGATORIO
+#     "password": "password123"     // OBLIGATORIO
+#   }
+# Respuesta exitosa (200):
+#   {
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
+#   }
+# El token tiene una expiración configurable (default 24h).
+# Usa este token en el header Authorization: Bearer <token>
+# Errores comunes:
+#   - 401 Unauthorized: Credenciales inválidas
+
+###
+# Iniciar sesión
+POST {{baseURL}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "juan@example.com",
+  "password": "password123"
+}
+
+# ============================================
+# POST /auth/register-commerce
+# ----------------------------------
+# Descripción: Registra un nuevo usuario Y crea un comercio asociado.
+#              Es el flujo completo para crear un comerciante (owner).
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "ownerName": "Juan Perez",     // OBLIGATORIO - Nombre del dueño
+#     "email": "juan@example.com", // OBLIGATORIO
+#     "password": "password123",   // OBLIGATORIO - mínimo 6 caracteres
+#     "commerceName": "Mi Tienda", // OBLIGATORIO - Nombre del comercio
+#     "address": "Calle 123",     // OBLIGATORIO
+#     "phone": "+1234567890",    // OPCIONAL
+#     "description": "Tienda"      // OPCIONAL
+#   }
+# Respuesta exitosa (201):
+#   {
+#     "access_token": "eyJhbGciOiJIUzI1NiIs...",
+#     "user": { ... },
+#     "commerce": { ... }
+#   }
+# El usuario se crea con rol OWNER automáticamente.
+
+###
+# Registrar usuario con comercio (dueño)
+POST {{baseURL}}/auth/register-commerce
+Content-Type: application/json
+
+{
+  "ownerName": "Juan Perez",
+  "email": "juan@example.com",
+  "password": "password123",
+  "commerceName": "Mi Tienda",
+  "address": "Calle Principal 123",
+  "phone": "+1234567890",
+  "description": "Tienda de alimentos"
+}
+
+# ============================================
+# POST /auth/logout
+# ----------------------------------
+# Descripción: Cierra la sesión del usuario actual.
+# Autenticación: REQUERIDA - Bearer token.
+# Body: No requiere body.
+# Headers:
+#   Authorization: Bearer <token>
+# Respuesta exitosa (200):
+#   { "message": "Logout exitoso" }
+# Nota: En JWT, el logout se maneja del lado del cliente
+# eliminando el token. En el backend, esta endpoint
+# puedeser usada para invalidar tokens en blacklist.
+
+###
+# Cerrar sesión
+POST {{baseURL}}/auth/logout
+Authorization: Bearer {{token}}

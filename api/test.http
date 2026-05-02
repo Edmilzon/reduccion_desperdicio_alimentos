@@ -1,0 +1,11 @@
+@baseUrl = http://localhost:5000
+
+### Test de Salud de la API
+GET {{baseUrl}}/
+Accept: application/json
+
+### ---
+### SECCIÓN DE USUARIOS
+### ---
+
+## AQUI VAN A PONER TODAS SUS APIS

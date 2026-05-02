@@ -15,27 +15,27 @@ class CustomNavbar extends StatelessWidget {
 	return BottomNavigationBar(
 	  currentIndex: currentIndex,
 	  onTap: onTap,
-	  type: BottomNavigationBarType.fixed, // Para que se vea bien en más de 3 items
+	  type: BottomNavigationBarType.fixed,
 	  backgroundColor: Colors.white,
-	  selectedItemColor: Colors.deepOrange, // Color de comida (apetitoso)
+	  selectedItemColor: Colors.deepOrange,
 	  unselectedItemColor: Colors.grey,
 	  selectedFontSize: 12,
 	  unselectedFontSize: 12,
 	  items: const [
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.restaurant_menu), // Home
+		  icon: Icon(Icons.restaurant_menu),
 		  label: 'Menú',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.search), // Búsqueda
+		  icon: Icon(Icons.search), 
 		  label: 'Buscar',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.shopping_cart), // Carrito
+		  icon: Icon(Icons.shopping_cart),
 		  label: 'Tienda',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.person), // Perfil
+		  icon: Icon(Icons.person), 
 		  label: 'Perfil',
 		),
 	  ],

@@ -1,0 +1,92 @@
+# ============================================
+# PRODUCTS - Productos con Categorías
+# ============================================
+# Los productos pertenecen a un comercio y tienen categoría.
+# Base URL: http://localhost:5000
+
+@baseURL = http://localhost:5000
+@token = your_jwt_token_here
+@commerceId = 1
+@productId = 1
+@categoryId = 1
+@categorySlug = panaderia
+
+# ============================================
+# GET - CONSULTAS
+# ============================================
+
+# Listar todos los productos con su categoría (sin filtros)
+GET {{baseURL}}/products/all
+
+##
+
+# Listar todos los productos (filtros: categoryId, commerceId)
+GET {{baseURL}}/products?categoryId={{categoryId}}&commerceId={{commerceId}}
+
+# Obtener productos por comercio (filtros: status, categoryId)
+GET {{baseURL}}/products/commerce/{{commerceId}}?status=active&categoryId={{categoryId}}
+
+# Obtener producto por ID
+GET {{baseURL}}/products/{{productId}}
+
+# --- Categorías ---
+
+# Listar todas las categorías
+
+GET {{baseURL}}/products/categories
+
+# Obtener categoría por ID
+GET {{baseURL}}/products/categories/{{categoryId}}
+
+# Obtener categoría por slug
+GET {{baseURL}}/products/categories/slug/{{categorySlug}}
+
+# Obtener productos por categoría
+GET {{baseURL}}/products/category/{{categoryId}}?commerceId={{commerceId}}
+
+# ============================================
+# POST - CREAR
+# ============================================
+
+# Crear producto (requiere autenticación)
+POST {{baseURL}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Pan Integral",
+  "description": "Pan integral fresco",
+  "originalPrice": 5.00,
+  "price": 3.50,
+  "quantity": 20,
+  "pickupStart": "2024-12-31T08:00:00",
+  "pickupEnd": "2024-12-31T14:00:00",
+  "commerceId": 1,
+  "categoryId": 1
+}
+
+# ============================================
+# PATCH - ACTUALIZAR
+# ============================================
+
+# Actualizar producto (requiere autenticación)
+PATCH {{baseURL}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Pan Integral Actualizado",
+  "description": "Nueva descripción",
+  "originalPrice": 6.00,
+  "price": 4.00,
+  "quantity": 15,
+  "categoryId": 1
+}
+
+# ============================================
+# DELETE - ELIMINAR
+# ============================================
+
+# Eliminar producto (soft delete, requiere autenticación)
+DELETE {{baseURL}}/products/{{productId}}
+Authorization: Bearer {{token}}

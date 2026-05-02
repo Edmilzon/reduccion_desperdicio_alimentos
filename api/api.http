@@ -1,0 +1,72 @@
+# ============================================
+# ECO BOCADO - API REFERENCE
+# ============================================
+# Documentación completa de todos los endpoints de la API.
+# 
+# Para usar esta colección:
+# 1. Instala la extensión "REST Client" en VS Code
+# 2. Configura las variables en cada archivo según tu entorno
+# 3. Ejecuta las peticiones desde los archivos individuales
+#
+# Orden recomendado de uso:
+# 1. auth.http - Registrar / Iniciar sesión
+# 2. products.http - Ver productos (público)
+# 3. orders.http - Crear pedido (requiere token)
+# 4. dashboard.http - Ver estadísticas (requiere token)
+#
+# ============================================
+# CONFIGURACIÓN GLOBAL
+# ============================================
+# Cambia estos valores según tu entorno de desarrollo
+###
+@baseURL = http://localhost:3000
+@token = 
+@userId = 
+@commerceId = 
+@productId = 
+@orderId = 
+
+# ============================================
+# RESUMEN DE ENDPOINTS
+# ============================================
+#
+# --- AUTH (Autenticación) ---
+# POST /auth/register          - Registrar usuario
+# POST /auth/login           - Iniciar sesión
+# POST /auth/register-commerce - Registrar owner con comercio
+# POST /auth/logout          - Cerrar sesión
+#
+# --- COMMERCES (Comercios) ---
+# POST /commerces            - Crear comercio
+# GET /commerces             - Listar comercios
+# GET /commerces/:id         - Ver comercio
+# PATCH /commerces/:id       - Actualizar comercio
+# DELETE /commerces/:id      - Eliminar comercio
+#
+# --- PRODUCTS (Productos) ---
+# POST /products             - Crear producto
+# GET /products             - Listar productos
+# GET /products/:id        - Ver producto
+# GET /products/commerce/:id - Productos por comercio
+# PATCH /products/:id       - Actualizar producto
+# DELETE /products/:id     - Eliminar producto
+#
+# --- ORDERS (Pedidos) ---
+# POST /orders               - Crear pedido
+# GET /orders/my-orders    - Mis pedidos
+# PATCH /orders/:id/cancel - Cancelar pedido
+#
+# --- DASHBOARD (Estadísticas) ---
+# GET /dashboard/commerce/:id - Estadísticas del comercio
+#
+# ============================================
+# CÓDIGOS DE ESTADO HTTP
+# ============================================
+# 200 OK - Solicitud exitosa
+# 201 Created - Recurso creado exitosamente
+# 400 Bad Request - Datos inválidos
+# 401 Unauthorized - Sin autenticación
+# 403 Forbidden - Sin permisos
+# 404 Not Found - Recurso no encontrado
+# 409 Conflict - Conflicto (ej: email ya existe)
+# 500 Internal Server Error - Error del servidor

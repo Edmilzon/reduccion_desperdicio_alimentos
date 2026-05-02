@@ -1,0 +1,97 @@
+# ============================================
+# ORDERS - Pedidos
+# ============================================
+# Este módulo maneja la gestión de pedidos de productos.
+# Los pedidos son creados por usuarios (compradores).
+# Base URL: http://localhost:3000
+
+@baseURL = http://localhost:3000
+@token = your_jwt_token_here
+@productId = uuid-del-producto
+@orderId = uuid-de-la-orden
+
+# ============================================
+# POST /orders
+# ----------------------------------
+# Descripción: Crea un nuevo pedido para un producto.
+# Autenticación: REQUERIDA - Bearer token.
+#              El usuario debe estar logueado.
+# Body (JSON):
+#   {
+#     "productId": "uuid-del-producto",  // OBLIGATORIO - ID del producto
+#     "quantity": 2                // OBLIGATORIO - Cantidad (mínimo 1)
+#   }
+# Headers:
+#   Authorization: Bearer <token>
+# Respuesta exitosa (201):
+#   {
+#     "id": "uuid-generated",
+#     "userId": "uuid-del-usuario",
+#     "productId": "uuid-del-producto",
+#     "quantity": 2,
+#     "totalPrice": 7.00,
+#     "status": "pending",
+#     "createdAt": "..."
+#   }
+# Errores comunes:
+#   - 401 Unauthorized: Sin token
+#   - 400 Bad Request: Datos inválidos
+#   - 404 Not Found: Producto no existe
+#   - 400: No hay suficiente stock
+
+###
+# Crear orden (requiere autenticación)
+POST {{baseURL}}/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": "uuid-del-producto",
+  "quantity": 2
+}
+
+# ============================================
+# GET /orders/my-orders
+# ----------------------------------
+# Descripción: Lista todos los pedidos del usuario actual.
+# Autenticación: REQUERIDA - Bearer token.
+# Headers:
+#   Authorization: Bearer <token>
+# Respuesta exitosa (200):
+#   [
+#     {
+#       "id": "uuid-1",
+#       "productId": "...",
+#       "quantity": 2,
+#       "totalPrice": 7.00,
+#       "status": "pending",
+#       "createdAt": "..."
+#     }
+#   ]
+# Muestra solo los pedidos del usuario logueado.
+
+###
+# Obtener mis órdenes (requiere autenticación)
+GET {{baseURL}}/orders/my-orders
+Authorization: Bearer {{token}}
+
+# ============================================
+# PATCH /orders/:id/cancel
+# ----------------------------------
+# Descripción: Cancela un pedido existente.
+# Autenticación: REQUERIDA - Bearer token.
+#              Solo el creador del pedido puede cancelarlo.
+# Params:
+#   :id - UUID del pedido (reemplaza {{orderId}})
+# Respuesta exitosa (200):
+#   { "message": "Orden cancelada", "status": "cancelled" }
+# Estados posibles: pending, confirmed, cancelled, completed
+# Errores comunes:
+#   - 401 Unauthorized: Sin token
+#   - 403 Forbidden: No eres el propietario
+#   - 400: La orden no puede cancelarse (ya stata completada)
+
+###
+# Cancelar orden (requiere autenticación)
+PATCH {{baseURL}}/orders/{{orderId}}/cancel
+Authorization: Bearer {{token}}

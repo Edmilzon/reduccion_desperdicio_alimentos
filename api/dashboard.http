@@ -1,0 +1,63 @@
+# ============================================
+# DASHBOARD - Estadísticas
+# ============================================
+# Este módulo provee estadísticas de un comercio específico.
+# Útil para que los owners vean el rendimiento de su negocio.
+# Base URL: http://localhost:3000
+
+@baseURL = http://localhost:3000
+@token = your_jwt_token_here
+@commerceId = uuid-del-comercio
+
+# ============================================
+# GET /dashboard/commerce/:commerceId
+# ----------------------------------
+# Descripción: Obtiene estadísticas de un comercio.
+#              Muestra métricas del negocio.
+# Autenticación: REQUERIDA - Bearer token.
+#              Solo el owner del comercio puede ver sus estadísticas.
+# Params:
+#   :commerceId - UUID del comercio
+# Headers:
+#   Authorization: Bearer <token>
+# Respuesta exitosa (200):
+#   {
+#     "commerce": {
+#       "id": "uuid",
+#       "name": "Mi Tienda"
+#     },
+#     "stats": {
+#       "totalProducts": 10,
+#       "availableProducts": 8,
+#       "soldProducts": 5,
+#       "totalOrders": 12,
+#       "pendingOrders": 3,
+#       "completedOrders": 9,
+#       "cancelledOrders": 0,
+#       "totalRevenue": 150.00,
+#       "wastePrevention": 3  // Productos salvados del desperdicio
+#     },
+#     "topProducts": [
+#       { "name": "Pan", "orders": 5 },
+#       { "name": "Leche", "orders": 3 }
+#     ]
+#   }
+# Métricas incluidas:
+#   - totalProducts: Total de productos publicados
+#   - availableProducts: Productos disponibles
+#   - soldProducts: Productos vendidos
+#   - totalOrders: Total de pedidos
+#   - pendingOrders: Pedidos pendientes
+#   - completedOrders: Pedidos completados
+#   - cancelledOrders: Pedidos cancelados
+#   - totalRevenue: Ingresos totales
+#   - wastePrevention: Productos que se salvaron de desperdiciar
+# Errores comunes:
+#   - 401 Unauthorized: Sin token
+#   - 403 Forbidden: No eres el owner del comercio
+#   - 404 Not Found: Comercio no existe
+
+###
+# Obtener estadísticas del comercio (requiere autenticación)
+GET {{baseURL}}/dashboard/commerce/{{commerceId}}
+Authorization: Bearer {{token}}
