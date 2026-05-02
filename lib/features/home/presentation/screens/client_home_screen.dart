@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_navbar.dart';
+import 'menu_screen.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -14,7 +15,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
 
   final _screens = const [
-    Center(child: Text('Menú', style: TextStyle(fontSize: 24))),
+    MenuScreen(),
     Center(child: Text('Buscar', style: TextStyle(fontSize: 24))),
     Center(child: Text('Tienda', style: TextStyle(fontSize: 24))),
     Center(child: Text('Perfil', style: TextStyle(fontSize: 24))),
