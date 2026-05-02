@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,8 +12,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Reducción Desperdicio',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
+<<<<<<< HEAD
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
@@ -59,13 +63,19 @@ class _MyHomePageState extends State<MyHomePage> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
           ],
+=======
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+        fontFamily: 'Roboto',
+        useMaterial3: true,
+        scaffoldBackgroundColor: AppColors.background,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+>>>>>>> main
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      home: const MainShell(),
     );
   }
 }
