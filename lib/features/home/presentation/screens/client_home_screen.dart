@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_navbar.dart';
 
-class ClientHomeScreen extends StatelessWidget {
+class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
+
+  @override
+  State<ClientHomeScreen> createState() => _ClientHomeScreenState();
+}
+
+class _ClientHomeScreenState extends State<ClientHomeScreen> {
+  int _currentIndex = 0;
+
+  final _screens = const [
+    Center(child: Text('Menú', style: TextStyle(fontSize: 24))),
+    Center(child: Text('Buscar', style: TextStyle(fontSize: 24))),
+    Center(child: Text('Tienda', style: TextStyle(fontSize: 24))),
+    Center(child: Text('Perfil', style: TextStyle(fontSize: 24))),
+  ];
 
   void _showProfileMenu(BuildContext context) {
     showModalBottomSheet(
@@ -89,15 +104,13 @@ class ClientHomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          'Vista de Cliente\n(Explorar ofertas)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: CustomNavbar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }
