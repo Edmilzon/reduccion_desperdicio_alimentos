@@ -1,0 +1,253 @@
+import 'package:flutter/material.dart';
+import 'login_screen.dart';
+import '../../../../shared/widgets/custom_input.dart';
+import '../../../../shared/widgets/custom_button.dart';
+import '../../../../shared/widgets/custom_label.dart';
+
+class CommerceAccessScreen extends StatefulWidget {
+  final String ownerName;
+  final String commerceName;
+
+  const CommerceAccessScreen({
+    super.key,
+    required this.ownerName,
+    required this.commerceName,
+  });
+
+  @override
+  State<CommerceAccessScreen> createState() =>
+      _CommerceAccessScreenState();
+}
+
+class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+
+  bool obscurePassword = true;
+  bool obscureConfirmPassword = true;
+  bool acceptedTerms = false;
+  bool isLoading = false;
+
+  bool get passwordsMatch =>
+      passwordController.text == confirmPasswordController.text;
+
+  // ---------------- VALIDATORS ----------------
+
+  String? emailValidator(String? value) {
+    if (value == null || value.isEmpty) {
+      return "El correo es obligatorio";
+    }
+
+    final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!regex.hasMatch(value)) {
+      return "Correo no válido";
+    }
+
+    return null;
+  }
+
+  String? passwordValidator(String? value) {
+    if (value == null || value.isEmpty) {
+      return "La contraseña es obligatoria";
+    }
+
+    if (value.length < 6) {
+      return "Mínimo 6 caracteres";
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return "Debe tener una mayúscula";
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return "Debe tener un número";
+    }
+
+    return null;
+  }
+
+  String? confirmPasswordValidator(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Confirma la contraseña";
+    }
+
+    if (!passwordsMatch) {
+      return "Las contraseñas no coinciden";
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(leading: const BackButton()),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              const Text(
+                "Crea tu acceso",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              // EMAIL
+              const CustomLabel("Correo electrónico"),
+              CustomInput(
+                hint: "ej: negocio@email.com",
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                validator: emailValidator,
+              ),
+
+              const SizedBox(height: 15),
+
+              const CustomLabel("Contraseña"),
+              CustomInput(
+                hint: "********",
+                controller: passwordController,
+                obscureText: obscurePassword,
+                onChanged: (_) => setState(() {}),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
+                ),
+                validator: passwordValidator,
+              ),
+
+              const SizedBox(height: 15),
+
+              const CustomLabel("Confirmar contraseña"),
+              CustomInput(
+                hint: "********",
+                controller: confirmPasswordController,
+                obscureText: obscureConfirmPassword,
+                onChanged: (_) => setState(() {}),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscureConfirmPassword =
+                          !obscureConfirmPassword;
+                    });
+                  },
+                ),
+                validator: confirmPasswordValidator,
+              ),
+
+              const SizedBox(height: 10),
+
+              if (confirmPasswordController.text.isNotEmpty)
+                Text(
+                  passwordsMatch
+                      ? "✔ Contraseñas coinciden"
+                      : "✖ No coinciden",
+                  style: TextStyle(
+                    color: passwordsMatch
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Checkbox(
+                    value: acceptedTerms,
+                    onChanged: (v) {
+                      setState(() => acceptedTerms = v!);
+                    },
+                  ),
+                  const Expanded(
+                    child: Text("Acepto términos y condiciones"),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 25),
+
+              CustomButton(
+                text: "REGISTRARSE",
+                isLoading: isLoading,
+                onPressed: () async {
+                  if (!_formKey.currentState!.validate()) return;
+                  if (!acceptedTerms) return;
+
+                  setState(() => isLoading = true);
+
+                  await Future.delayed(
+                    const Duration(seconds: 1),
+                  );
+
+                  setState(() => isLoading = false);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Registro exitoso 🚀"),
+                    ),
+                  );
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const Placeholder(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              Center(
+                child: Column(
+                  children: [
+                    const Text("¿Ya tienes cuenta?"),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Iniciar sesión",
+                        style: TextStyle(color: Colors.green),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
