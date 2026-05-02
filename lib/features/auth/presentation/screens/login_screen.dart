@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
+import '../../../home/presentation/screens/client_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 const SizedBox(height: 10),
 
                 IconButton(
@@ -122,29 +122,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 80),
 
                 CustomButton(
-                  text: isLoading
-                      ? "Cargando..."
-                      : "Iniciar Sesión",
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          if (_formKey.currentState!.validate()) {
-                            setState(() => isLoading = true);
-
-                            await Future.delayed(
-                              const Duration(seconds: 2),
-                            );
-
-                            setState(() => isLoading = false);
-
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const Placeholder(),
-                              ),
-                            );
-                          }
-                        },
+                  text: "Iniciar Sesión",
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ClientHomeScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 30),

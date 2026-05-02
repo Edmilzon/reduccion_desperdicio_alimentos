@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Reducción Desperdicio',
+      title: 'Eco Bocado',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
           scrolledUnderElevation: 0,
         ),
       ),
-      home: const MainShell(),
+      home: const LoginScreen(),
     );
   }
 }
