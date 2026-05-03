@@ -2,25 +2,48 @@ class CategoryModel {
   final int id;
   final String name;
   final String slug;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? imageUrl;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final List<ProductModel>? products;
 
   CategoryModel({
     required this.id,
     required this.name,
     required this.slug,
-    required this.createdAt,
-    required this.updatedAt,
+    this.imageUrl,
+    this.createdAt,
+    this.updatedAt,
+    this.products,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
+    final productsJson = json['products'] as List<dynamic>?;
     return CategoryModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
+      imageUrl: json['imageUrl'] ?? json['image_url'],
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      products: productsJson?.map((p) => ProductModel.fromJson(p)).toList() ?? [],
     );
+  }
+
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
+  bool get hasSlug => slug.isNotEmpty;
+  bool get hasProducts => products != null && products!.isNotEmpty;
+  
+  int get productCount => products?.length ?? 0;
+  
+  double? get maxDiscount {
+    if (!hasProducts) return null;
+    double max = 0;
+    for (final p in products!) {
+      final discount = p.discountPercentage;
+      if (discount > max) max = discount;
+    }
+    return max > 0 ? max : null;
   }
 }
 
@@ -35,9 +58,9 @@ class ProductModel {
   final DateTime pickupStart;
   final DateTime pickupEnd;
   final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final CategoryModel category;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final CategoryModel? category;
 
   ProductModel({
     required this.id,
@@ -50,9 +73,9 @@ class ProductModel {
     required this.pickupStart,
     required this.pickupEnd,
     required this.status,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.category,
+    this.createdAt,
+    this.updatedAt,
+    this.category,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -64,14 +87,14 @@ class ProductModel {
       price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
       quantity: json['quantity'] ?? 0,
       imageUrl: json['imageUrl'] ?? '',
-      pickupStart: DateTime.parse(json['pickupStart'] ?? DateTime.now().toIso8601String()),
-      pickupEnd: DateTime.parse(json['pickupEnd'] ?? DateTime.now().toIso8601String()),
+      pickupStart: DateTime.tryParse(json['pickupStart'] ?? '') ?? DateTime.now(),
+      pickupEnd: DateTime.tryParse(json['pickupEnd'] ?? '') ?? DateTime.now(),
       status: json['status'] ?? 'active',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
       category: json['category'] != null 
           ? CategoryModel.fromJson(json['category']) 
-          : CategoryModel(id: 0, name: '', slug: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
+          : CategoryModel(id: 0, name: '', slug: ''),
     );
   }
 

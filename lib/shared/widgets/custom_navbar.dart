@@ -27,15 +27,19 @@ class CustomNavbar extends StatelessWidget {
 		  label: 'Menú',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.search), 
-		  label: 'Buscar',
-		),
-		BottomNavigationBarItem(
-		  icon: Icon(Icons.shopping_cart),
+		  icon: Icon(Icons.storefront),
 		  label: 'Tienda',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.person), 
+		  icon: Icon(Icons.shopping_cart),
+		  label: 'Carrito',
+		),
+		BottomNavigationBarItem(
+		  icon: Icon(Icons.favorite),
+		  label: 'Favoritos',
+		),
+		BottomNavigationBarItem(
+		  icon: Icon(Icons.person),
 		  label: 'Perfil',
 		),
 	  ],
