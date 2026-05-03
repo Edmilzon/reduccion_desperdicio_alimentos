@@ -113,7 +113,7 @@ class FeaturedProductCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          product.category.name,
+                          product.category?.name ?? 'Sin categoría',
                           style: const TextStyle(
                             fontSize: 10,
                             color: AppColors.primary,
