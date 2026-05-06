@@ -1,13 +1,14 @@
 # ============================================
 # COMMERCES - Comercios
 # ============================================
-# Este módulo maneja la gestión de comercios.
-# Los comercios pueden ser creados, leídos, actualizados y eliminados.
+# Gestión de comercios.
+# Para documentación completa ver api/api.http
+#
 # Base URL: http://localhost:3000
 
-@baseURL = http://localhost:5000
+@baseURL = http://localhost:3000
 @token = your_jwt_token_here
-@commerceId = uuid-del-comercio
+@commerceId = 1
 
 # ============================================
 # POST /commerces
@@ -16,30 +17,14 @@
 # Autenticación: REQUERIDA - Bearer token.
 # Body (JSON):
 #   {
-#     "name": "Mi Tienda",         // OBLIGATORIO - Nombre del comercio
+#     "name": "Mi Tienda",         // OBLIGATORIO
 #     "description": "Descripción",  // OPCIONAL
-#     "address": "Calle 123",       // OBLIGATORIO - Dirección
-#     "phone": "+1234567890"      // OPCIONAL - Teléfono
+#     "nit": "12345678"         // OPCIONAL - NIT del comercio
 #   }
 # Headers:
 #   Authorization: Bearer <token>
-# Respuesta exitosa (201):
-#   {
-#     "id": "uuid-generated",
-#     "name": "Mi Tienda",
-#     "description": "Descripción",
-#     "address": "Calle 123",
-#     "phone": "+1234567890",
-#     "isActive": true,
-#     "ownerId": "uuid-del-owner",
-#     "createdAt": "2024-01-01T00:00:00.000Z"
-#   }
-# Errores comunes:
-#   - 401 Unauthorized: Sin token válido
-#   - 403 Forbidden: No tienes permisos
 
 ###
-# Crear comercio (requiere autenticación)
 POST {{baseURL}}/commerces
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -47,101 +32,61 @@ Content-Type: application/json
 {
   "name": "Nueva Tienda",
   "description": "Descripción de la tienda",
-  "address": "Calle Nueva 456",
-  "phone": "+0987654321"
+  "nit": "12345678"
 }
 
 # ============================================
 # GET /commerces
 # ----------------------------------
-# Descripción: Lista todos los comercios registrados.
-# Autenticación: No requerida (pública).
-# Query params: No tiene.
-# Respuesta exitosa (200):
-#   [
-#     { "id": "...", "name": "Tienda 1", ... },
-#     { "id": "...", "name": "Tienda 2", ... }
-#   ]
+# Descripción: Lista todos los comercios.
+# Autenticación: No requerida.
 
 ###
-# Listar todos los comercios
 GET {{baseURL}}/commerces
 
 # ============================================
 # GET /commerces/:id
 # ----------------------------------
-# Descripción: Obtiene un comercio específico por su ID.
-# Autenticación: No requerida (pública).
-# Params:
-#   :id - UUID del comercio (reemplaza {{commerceId}})
-# Respuesta exitosa (200):
-#   {
-#     "id": "uuid-generated",
-#     "name": "Mi Tienda",
-#     "description": "Descripción",
-#     "address": "Calle 123",
-#     "phone": "+1234567890",
-#     "isActive": true,
-#     "ownerId": "uuid-del-owner"
-#   }
-# Errores comunes:
-#   - 404 Not Found: Comercio no existe
+# Descripción: Obtiene un comercio por ID.
+# Autenticación: No requerida.
+# Params: ID numérico del comercio
 
 ###
-# Obtener comercio por ID
 GET {{baseURL}}/commerces/{{commerceId}}
+
+# ============================================
+# GET /commerces/:id/products
+# ----------------------------------
+# Descripción: Obtiene los productos de un comercio.
+# Autenticación: No requerida.
+# Params: ID numérico del comercio
+
+###
+GET {{baseURL}}/commerces/{{commerceId}}/products
 
 # ============================================
 # PATCH /commerces/:id
 # ----------------------------------
-# Descripción: Actualiza los datos de un comercio.
-# Autenticación: REQUERIDA - Bearer token.
-#              El usuario debe ser owner del comercio.
-# Body (JSON) - Solo incluye los campos a actualizar:
-#   {
-#     "name": "Nuevo Nombre",     // OPCIONAL
-#     "description": "Nueva desc", // OPCIONAL
-#     "address": "Nueva Dir",   // OPCIONAL
-#     "phone": "+1111111111"  // OPCIONAL
-#   }
-# Params:
-#   :id - UUID del comercio
-# Respuesta exitosa (200):
-#   { "id": "...", "updatedAt": "..." }
-# Errores comunes:
-#   - 401 Unauthorized: Sin token
-#   - 403 Forbidden: No eres elowner del comercio
+# Descripción: Actualiza un comercio.
+# Autenticación: REQUERIDA - Solo el owner.
 
 ###
-# Actualizar comercio (requiere autenticación)
 PATCH {{baseURL}}/commerces/{{commerceId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "name": "Tienda Actualizada",
-  "description": "Nueva descripción",
-  "address": "Nueva Dirección",
-  "phone": "+1111111111"
+  "description": "Nueva descripción"
 }
 
 # ============================================
 # DELETE /commerces/:id
 # ----------------------------------
-# Descripción: Elimina (desactiva) un comercio.
-# Autenticación: REQUERIDA - Bearer token.
-#              El usuario debe ser owner del comercio.
-# Params:
-#   :id - UUID del comercio
-# Respuesta exitosa (200):
-#   { "message": "Comercio eliminado" }
-# Nota: En la DB se marca como isActive = false
-# (eliminación lógica, no física).
-# Errores comunes:
-#   - 401 Unauthorized: Sin token
-#   - 403 Forbidden: No eres el owner
+# Descripción: Elimina un comercio.
+# Autenticación: REQUERIDA - Solo el owner.
+# Nota: Eliminación física (no lógica).
 
 ###
-# Eliminar comercio (requiere autenticación)
 DELETE {{baseURL}}/commerces/{{commerceId}}
 Authorization: Bearer {{token}}

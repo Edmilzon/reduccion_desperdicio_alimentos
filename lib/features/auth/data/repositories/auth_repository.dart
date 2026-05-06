@@ -8,6 +8,7 @@ class AuthRepository {
       'https://reduccion-desperdicio-backend.vercel.app';
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
+  static const String _commerceIdKey = 'commerce_id';
 
   Future<AuthResponse> login(String email, String password) async {
     final response = await http.post(
@@ -23,6 +24,7 @@ class AuthRepository {
       final data = jsonDecode(response.body);
       final authResponse = AuthResponse.fromJson(data);
       await _saveAuth(authResponse);
+      await fetchProfile();
       return authResponse;
     } else {
       throw _parseError(response);
@@ -48,6 +50,10 @@ class AuthRepository {
       final data = jsonDecode(response.body);
       final authResponse = AuthResponse.fromJson(data);
       await _saveAuth(authResponse);
+      final user = await fetchProfile();
+      if (user == null) {
+        throw Exception('Error al obtener perfil');
+      }
       return authResponse;
     } else {
       throw _parseError(response);
@@ -83,6 +89,10 @@ class AuthRepository {
       final data = jsonDecode(response.body);
       final authResponse = AuthResponse.fromJson(data);
       await _saveAuth(authResponse);
+      final user = await fetchProfile();
+      if (user == null) {
+        throw Exception('Error al obtener perfil');
+      }
       return authResponse;
     } else {
       throw _parseError(response);
@@ -117,7 +127,15 @@ class AuthRepository {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(data['user']);
+      if (user.isMerchant && data['commerce'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final commerceId = data['commerce']['id']?.toString();
+        if (commerceId != null) {
+          await prefs.setString(_commerceIdKey, commerceId);
+        }
+      }
+      return user;
     }
     return null;
   }
@@ -139,6 +157,7 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
+    await prefs.remove(_commerceIdKey);
   }
 
   Future<bool> isLoggedIn() async {
@@ -150,6 +169,14 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, auth.accessToken);
     await prefs.setString(_userKey, jsonEncode(auth.user.toJson()));
+    if (auth.commerce != null) {
+      await prefs.setString(_commerceIdKey, auth.commerce!.id);
+    }
+  }
+
+  Future<String?> getCommerceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_commerceIdKey);
   }
 
   Exception _parseError(http.Response response) {

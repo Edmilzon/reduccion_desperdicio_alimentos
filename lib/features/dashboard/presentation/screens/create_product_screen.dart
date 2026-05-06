@@ -30,11 +30,17 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   TimeOfDay? _pickupEndTime;
   bool isLoading = false;
   bool _categoriasCargadas = false;
+  int _commerceId = 0;
 
   @override
   void initState() {
     super.initState();
-    _cargarCategorias();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    _commerceId = await _repo.getCommerceIdInt();
+    await _cargarCategorias();
   }
 
   Future<void> _cargarCategorias() async {
@@ -53,16 +59,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         );
       }
     }
-  }
-
-  @override
-  void dispose() {
-    titleController.dispose();
-    descriptionController.dispose();
-    priceController.dispose();
-    originalPriceController.dispose();
-    quantityController.dispose();
-    super.dispose();
   }
 
   String? validarRequerido(String? v, String msg) {
@@ -165,7 +161,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         quantity: int.parse(quantityController.text),
         pickupStart: pickupStartDT,
         pickupEnd: pickupEndDT,
-        commerceId: 1,
+        commerceId: _commerceId,
         categoryId: _categoriaSeleccionada!.id,
       );
 
@@ -378,5 +374,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    priceController.dispose();
+    originalPriceController.dispose();
+    quantityController.dispose();
+    super.dispose();
   }
 }

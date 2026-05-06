@@ -7,6 +7,55 @@ class DashboardRepository {
   static const String baseUrl =
       'https://reduccion-desperdicio-backend.vercel.app';
   static const String _tokenKey = 'auth_token';
+  static const String _commerceIdKey = 'commerce_id';
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
+  }
+
+  Future<String?> _getCommerceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_commerceIdKey);
+  }
+
+  Future<int> getCommerceIdInt() async {
+    String? id = await _getCommerceId();
+    if (id == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey);
+      if (token != null) {
+        try {
+          final response = await http.get(
+            Uri.parse('$baseUrl/auth/me'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          );
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            if (data['commerce'] != null) {
+              id = data['commerce']['id']?.toString();
+              if (id != null) {
+                await prefs.setString(_commerceIdKey, id);
+              }
+            } else {
+              if (data['user'] != null && data['user']['role'] != 'merchant') {
+                throw Exception('No eres un comerciante');
+              }
+            }
+          }
+        } catch (e) {
+          await prefs.remove(_tokenKey);
+          await prefs.remove(_commerceIdKey);
+          throw Exception('Sesión expirada. Por favor inicia sesión de nuevo.');
+        }
+      }
+    }
+    if (id == null) throw Exception('No hay comercio asociado.	Inicia sesión como comerciante.');
+    return int.parse(id);
+  }
 
   Future<List<CategoryModel>> getCategorias() async {
     final response = await http.get(
@@ -25,9 +74,35 @@ class DashboardRepository {
   Future<List<OfertaModel>> getMisOfertas() async {
     final token = await _getToken();
     if (token == null) throw Exception('No hay sesión');
+    
+    String? commerceId = await _getCommerceId();
+    if (commerceId == null) {
+      final prefs = await SharedPreferences.getInstance();
+      try {
+        final response = await http.get(
+          Uri.parse('$baseUrl/auth/me'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['commerce'] != null) {
+            commerceId = data['commerce']['id']?.toString();
+            if (commerceId != null) {
+              await prefs.setString(_commerceIdKey, commerceId);
+            }
+          }
+        }
+      } catch (e) {
+        throw Exception('Error al obtener comercio');
+      }
+    }
+    if (commerceId == null) throw Exception('No hay comercio asociado.	Inicia sesión como comerciante.');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/products/all'),
+      Uri.parse('$baseUrl/commerces/$commerceId/products'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -35,8 +110,9 @@ class DashboardRepository {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => OfertaModel.fromJson(json)).toList();
+      final data = jsonDecode(response.body);
+      final List<dynamic> products = data['products'] ?? [];
+      return products.map((json) => OfertaModel.fromJson(json)).toList();
     } else {
       throw Exception('Error al cargar ofertas');
     }
@@ -138,11 +214,6 @@ class DashboardRepository {
     if (response.statusCode != 200) {
       throw Exception('Error al eliminar producto');
     }
-  }
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
   }
 }
 

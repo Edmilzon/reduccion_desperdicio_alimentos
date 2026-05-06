@@ -53,16 +53,43 @@ class UserModel {
 class AuthResponse {
   final UserModel user;
   final String accessToken;
+  final CommerceModel? commerce;
 
   AuthResponse({
     required this.user,
     required this.accessToken,
+    this.commerce,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     return AuthResponse(
       user: UserModel.fromJson(json['user'] ?? {}),
       accessToken: json['access_token'] ?? '',
+      commerce: json['commerce'] != null ? CommerceModel.fromJson(json['commerce']) : null,
+    );
+  }
+}
+
+class CommerceModel {
+  final String id;
+  final String name;
+  final String? description;
+  final String? nit;
+
+  CommerceModel({
+    required this.id,
+    required this.name,
+    this.description,
+    this.nit,
+  });
+
+  factory CommerceModel.fromJson(Map<String, dynamic> json) {
+    final idValue = json['id'];
+    return CommerceModel(
+      id: idValue?.toString() ?? '',
+      name: json['name'] ?? '',
+      description: json['description'],
+      nit: json['nit'],
     );
   }
 }

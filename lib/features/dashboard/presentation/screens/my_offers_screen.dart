@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
   const MyOffersScreen({super.key});
@@ -15,6 +18,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _repo = DashboardRepository();
+  final _authRepo = AuthRepository();
   
   List<OfertaModel> _ofertas = [];
   bool _isLoading = true;
@@ -25,10 +29,10 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() {}));
-    _cargarOfertas();
+    cargarOfertas();
   }
 
-  Future<void> _cargarOfertas() async {
+  Future<void> cargarOfertas() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -76,7 +80,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                         Text(_error!),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _cargarOfertas,
+                          onPressed: cargarOfertas,
                           child: const Text('Reintentar'),
                         ),
                       ],
@@ -134,13 +138,9 @@ class _MyOffersScreenState extends State<MyOffersScreen>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
           const Expanded(
             child: Text(
               'Mi Tienda',
@@ -155,10 +155,54 @@ class _MyOffersScreenState extends State<MyOffersScreen>
           CircleAvatar(
             radius: 18,
             backgroundColor: AppColors.cardBg,
-            child: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
+              onPressed: _showOptionsMenu,
+            ),
           ),
           const SizedBox(width: 8),
         ],
+      ),
+    );
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.shopping_bag_outlined),
+              title: const Text('Ver como Cliente'),
+              subtitle: const Text('Ver productos y comprar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ShopScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                Navigator.pop(context);
+                await _authRepo.logout();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -201,7 +245,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
       );
     }
     return RefreshIndicator(
-      onRefresh: _cargarOfertas,
+      onRefresh: cargarOfertas,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         itemCount: lista.length,
@@ -281,7 +325,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         title: const Text('Editar oferta'),
         content: Text('Editar: ${oferta.nombre}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('cerrar')),
         ],
       ),
     );
@@ -300,7 +344,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
               Navigator.pop(context);
               try {
                 await _repo.deleteProduct(oferta.id);
-                _cargarOfertas();
+                cargarOfertas();
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

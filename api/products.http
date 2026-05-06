@@ -1,15 +1,16 @@
 # ============================================
-# PRODUCTS - Productos con Categorías
+# PRODUCTS - Productos
 # ============================================
 # Los productos pertenecen a un comercio y tienen categoría.
+# Para documentación completa ver api/api.http
+#
 # Base URL: http://localhost:3000
 
-@baseURL = https://reduccion-desperdicio-backend.vercel.app/
+@baseURL = http://localhost:3000
 @token = your_jwt_token_here
 @commerceId = 1
 @productId = 1
 @categoryId = 1
-@categorySlug = panaderia
 
 # ============================================
 # GET - CONSULTAS
@@ -27,19 +28,17 @@ GET {{baseURL}}/products?categoryId={{categoryId}}&commerceId={{commerceId}}
 # Obtener productos por comercio (filtros: status, categoryId)
 GET {{baseURL}}/products/commerce/{{commerceId}}?status=active&categoryId={{categoryId}}
 
+# Obtener estadísticas del comercio (requiere autenticación)
+GET {{baseURL}}/products/commerce/{{commerceId}}/stats
+Authorization: Bearer {{token}}
+
 # Obtener producto por ID
 GET {{baseURL}}/products/{{productId}}
 
 # --- Categorías ---
 
-#### Listar todas las categorías
+### Listar todas las categorías (solo categorías, sin productos)
 GET {{baseURL}}/products/categories
-
-# Obtener categoría por ID
-GET {{baseURL}}/products/categories/{{categoryId}}
-
-# Obtener categoría por slug
-GET {{baseURL}}/products/categories/slug/{{categorySlug}}
 
 # Obtener productos por categoría
 GET {{baseURL}}/products/category/{{categoryId}}?commerceId={{commerceId}}
