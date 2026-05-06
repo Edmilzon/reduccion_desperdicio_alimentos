@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../home/presentation/screens/client_home_screen.dart';
-import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/models/auth_model.dart';
 import 'account_type_screen.dart';
+import '../../../../shared/widgets/main_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateByRole(UserModel user) {
     final destination = user.isMerchant
-        ? const DashboardScreen()
+        ? const MainShell()
         : const ClientHomeScreen();
     
     Navigator.pushReplacement(

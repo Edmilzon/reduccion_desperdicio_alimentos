@@ -1,80 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
-import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/actividad_tile.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/rendimiento_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/stats_mini_card.dart';
-import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/time_alert_banner.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/ventas_card.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
-  // Datos de prueba — se reemplazarán con Firebase
-  static final _ofertas = [
-    OfertaModel(
-      id: '1',
-      categoria: 'Panadería',
-      nombre: 'Pack Panadería Familiar',
-      unidadesRestantes: 3,
-      precio: 4.50,
-      precioOriginal: 12.00,
-      estado: 'active',
-      horaLimite: DateTime.now().add(const Duration(minutes: 12)),
-      creadaEn: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    OfertaModel(
-      id: '2',
-      categoria: 'Frutería',
-      nombre: 'Cesta Frutas de Temporada',
-      unidadesRestantes: 0,
-      precio: 8.20,
-      precioOriginal: 15.00,
-      estado: 'sold',
-      horaLimite: DateTime.now().subtract(const Duration(hours: 1)),
-      creadaEn: DateTime.now().subtract(const Duration(hours: 5)),
-    ),
-  ];
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final _repo = DashboardRepository();
+  List<OfertaModel> _ofertas = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final ofertas = await _repo.getMisOfertas();
+      if (mounted) {
+        setState(() {
+          _ofertas = ofertas;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ofertaAlerta = _ofertas.where((o) => o.isExpiringSoon).firstOrNull;
+    final ventasTotal = _ofertas.fold<double>(0, (sum, o) => sum + o.price);
+    final productosActivos = _ofertas.where((o) => o.isActive).length;
+    final productosVendidos = _ofertas.where((o) => o.isSold).length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            _buildAppBar(),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(),
-                  if (ofertaAlerta != null) ...[
-                    const SizedBox(height: 16),
-                    TimeAlertBanner(oferta: ofertaAlerta),
-                  ],
-                  const SizedBox(height: 16),
-                  RendimientoCard(
-                    ofertasActivas: 15,
-                    ofertasVendidas: 28,
-                    tasaExito: 84,
-                    tiempoPromedioMin: 45,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _cargarDatos,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _cargarDatos,
+                    child: CustomScrollView(
+                      slivers: [
+                        _buildAppBar(),
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate([
+                              const SizedBox(height: 20),
+                              _buildHeader(),
+                              const SizedBox(height: 20),
+                              _buildStatsRow(ventasTotal, productosActivos, productosVendidos),
+                              const SizedBox(height: 16),
+                              if (ofertaAlerta != null)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.alertBg,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.warning, color: AppColors.primary),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'La oferta "${ofertaAlerta.nombre}" expira pronto',
+                                          style: const TextStyle(color: AppColors.primary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+                              const SizedBox(height: 20),
+                            ]),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildActividadHeader(),
-                  const SizedBox(height: 4),
-                  _buildActividad(),
-                  const SizedBox(height: 20),
-                ]),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -89,7 +131,7 @@ class DashboardScreen extends StatelessWidget {
         onPressed: () {},
       ),
       title: const Text(
-        'owner',
+        'Panel',
         style: TextStyle(
           color: AppColors.primary,
           fontWeight: FontWeight.w800,
@@ -111,11 +153,11 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildHeader() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         Text(
-          'Panel de Control',
+          'Estadísticas',
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -124,92 +166,41 @@ class DashboardScreen extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'Gestión activa de excedentes y ventas',
+          'Resumen de tu negocio',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(double ventas, int activos, int vendidos) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           flex: 5,
-          child: VentasCard(ventas: 12400, porcentajeCambio: 14),
+          child: VentasCard(ventas: ventas, porcentajeCambio: 0),
         ),
         const SizedBox(width: 12),
         Expanded(
           flex: 4,
           child: Column(
-            children: const [
+            children: [
               StatsMiniCard(
                 icon: Icons.inventory_2_outlined,
                 label1: 'Productos',
                 label2: 'Activos',
-                value: '42',
+                value: activos.toString(),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               StatsMiniCard(
                 icon: Icons.restaurant_menu_outlined,
-                label1: 'Platos',
-                label2: 'Vendidos',
-                value: '128',
+                label1: 'Vendidos',
+                label2: 'Total',
+                value: vendidos.toString(),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActividadHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'Actividad Reciente',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          'Ver todo',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActividad() {
-    return Column(
-      children: const [
-        Divider(height: 1),
-        ActividadTile(
-          tipo: TipoActividad.vendida,
-          titulo: 'Oferta Vendida',
-          subtitulo: 'Menú Ejecutivo x2 · Hace 5m',
-          monto: 24.00,
-        ),
-        Divider(height: 1),
-        ActividadTile(
-          tipo: TipoActividad.nueva,
-          titulo: 'Nueva Oferta',
-          subtitulo: 'Rolls de Canela · Hace 12m',
-          badge: 'ACTIVO',
-        ),
-        Divider(height: 1),
-        ActividadTile(
-          tipo: TipoActividad.stock,
-          titulo: 'Stock Actualizado',
-          subtitulo: 'Bebidas Naturales · Hace 1h',
         ),
       ],
     );

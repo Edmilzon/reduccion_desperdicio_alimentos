@@ -1,98 +1,120 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  static final _historial = [
-    OfertaModel(
-      id: 'h1',
-      categoria: 'Panadería',
-      nombre: 'Pack Panadería Familiar',
-      unidadesRestantes: 0,
-      precio: 5.00,
-      precioOriginal: 13.00,
-      estado: 'sold',
-      horaLimite: DateTime.now().subtract(const Duration(days: 1)),
-      creadaEn: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
-    ),
-    OfertaModel(
-      id: 'h2',
-      categoria: 'Menú del Día',
-      nombre: 'Menú Ejecutivo Completo',
-      unidadesRestantes: 0,
-      precio: 7.50,
-      precioOriginal: 18.00,
-      estado: 'sold',
-      horaLimite: DateTime.now().subtract(const Duration(days: 2)),
-      creadaEn: DateTime.now().subtract(const Duration(days: 2, hours: 4)),
-    ),
-  ];
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  final _repo = DashboardRepository();
+  List<OfertaModel> _ofertas = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarHistorial();
+  }
+
+  Future<void> _cargarHistorial() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final ofertas = await _repo.getMisOfertas();
+      if (mounted) {
+        setState(() {
+          _ofertas = ofertas.where((o) => o.isSold).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              backgroundColor: AppColors.background,
-              elevation: 0,
-              floating: true,
-              leading: IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-                onPressed: () {},
-              ),
-              title: const Text(
-                'owner',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                ),
-              ),
-              centerTitle: true,
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.cardBg,
-                    child: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
-                  ),
-                ),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Historial',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _cargarHistorial,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
                     ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Historial',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Tus productos vendidos',
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _ofertas.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No hay historial aún.',
+                                  style: TextStyle(color: AppColors.textSecondary),
+                                ),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _cargarHistorial,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  itemCount: _ofertas.length,
+                                  itemBuilder: (_, i) => OfferCard(
+                                    oferta: _ofertas[i],
+                                    onEdit: () {},
+                                    onDelete: () {},
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Todas tus ofertas pasadas.',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 20),
-                  ..._historial.map(
-                    (o) => OfferCard(oferta: o),
-                  ),
-                ]),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

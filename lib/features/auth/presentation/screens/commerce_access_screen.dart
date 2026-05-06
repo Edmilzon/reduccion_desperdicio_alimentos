@@ -5,6 +5,7 @@ import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_label.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+import '../../../../shared/widgets/main_shell.dart';
 
 class CommerceAccessScreen extends StatefulWidget {
   final String ownerName;
@@ -62,7 +63,7 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const MainShell()),
         );
       }
     } catch (e) {
