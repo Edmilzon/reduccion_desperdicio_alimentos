@@ -84,3 +84,6 @@ Ventajas de este Enfoque
     Desacoplamiento: La lógica de negocio (Domain) está separada de la interfaz (Presentation), permitiendo cambiar el diseño o el backend con un impacto mínimo.
 
     Trabajo en Equipo: Permite que varios desarrolladores trabajen en diferentes funcionalidades simultáneamente sin generar conflictos de fusión (merge conflicts) constantes.
+
+    Release v1.0.1 
+    4 hus ccompletos primer sprint
