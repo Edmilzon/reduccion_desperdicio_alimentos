@@ -1,10 +1,10 @@
 # ============================================
 # AUTH - Autenticación
 # ============================================
-# Este módulo maneja el registro, login y logout de usuarios.
+# Este módulo maneja el registro, login, logout y perfil de usuarios.
 # Base URL: http://localhost:3000
 
-@baseURL = http://localhost:3000
+@baseURL = https://reduccion-desperdicio-backend.vercel.app/
 @token = your_jwt_token_here
 
 # ============================================
@@ -16,15 +16,18 @@
 #   {
 #     "name": "Juan Perez",        // OBLIGATORIO - Nombre completo
 #     "email": "juan@example.com", // OBLIGATORIO - Email válido
-#     "password": "password123"   // OBLIGATORIO - Mínimo 6 caracteres
+#     "password": "password123",   // OBLIGATORIO - Mínimo 6 caracteres
+#     "role": "CLIENT"             // OPCIONAL - CLIENT, MERCHANT, ADMIN (default: CLIENT)
 #   }
 # Respuesta exitosa (201):
 #   {
-#     "id": "uuid-del-usuario",
-#     "name": "Juan Perez",
-#     "email": "juan@example.com",
-#     "role": "USER",
-#     "createdAt": "2024-01-01T00:00:00.000Z"
+#     "user": {
+#       "id": "uuid-del-usuario",
+#       "email": "juan@example.com",
+#       "name": "Juan Perez",
+#       "role": "CLIENT"
+#     },
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
 #   }
 # Errores comunes:
 #   - 409 Conflict: "El correo ya está registrado"
@@ -52,6 +55,12 @@ Content-Type: application/json
 #   }
 # Respuesta exitosa (200):
 #   {
+#     "user": {
+#       "id": "uuid-del-usuario",
+#       "email": "juan@example.com",
+#       "name": "Juan Perez",
+#       "role": "CLIENT"
+#     },
 #     "access_token": "eyJhbGciOiJIUzI1NiIs..."
 #   }
 # El token tiene una expiración configurable (default 24h).
@@ -73,25 +82,30 @@ Content-Type: application/json
 # POST /auth/register-commerce
 # ----------------------------------
 # Descripción: Registra un nuevo usuario Y crea un comercio asociado.
-#              Es el flujo completo para crear un comerciante (owner).
+#              Es el flujo completo para crear un comerciante (MERCHANT).
 # Autenticación: No requerida.
 # Body (JSON):
 #   {
 #     "ownerName": "Juan Perez",     // OBLIGATORIO - Nombre del dueño
-#     "email": "juan@example.com", // OBLIGATORIO
-#     "password": "password123",   // OBLIGATORIO - mínimo 6 caracteres
-#     "commerceName": "Mi Tienda", // OBLIGATORIO - Nombre del comercio
-#     "address": "Calle 123",     // OBLIGATORIO
-#     "phone": "+1234567890",    // OPCIONAL
-#     "description": "Tienda"      // OPCIONAL
+#     "email": "juan@example.com",  // OBLIGATORIO
+#     "password": "password123",     // OBLIGATORIO - mínimo 6 caracteres
+#     "commerceName": "Mi Tienda",  // OBLIGATORIO - Nombre del comercio
+#     "description": "Tienda",     // OPCIONAL
+#     "latitude": 4.7110,           // OPCIONAL
+#     "longitude": -74.0721,        // OPCIONAL
+#     "nit": "123456789"           // OPCIONAL
 #   }
 # Respuesta exitosa (201):
 #   {
-#     "access_token": "eyJhbGciOiJIUzI1NiIs...",
-#     "user": { ... },
-#     "commerce": { ... }
+#     "user": {
+#       "id": "uuid-del-usuario",
+#       "email": "juan@example.com",
+#       "name": "Juan Perez",
+#       "role": "MERCHANT"
+#     },
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
 #   }
-# El usuario se crea con rol OWNER automáticamente.
+# El usuario se crea con rol MERCHANT automáticamente.
 
 ###
 # Registrar usuario con comercio (dueño)
@@ -103,9 +117,10 @@ Content-Type: application/json
   "email": "juan@example.com",
   "password": "password123",
   "commerceName": "Mi Tienda",
-  "address": "Calle Principal 123",
-  "phone": "+1234567890",
-  "description": "Tienda de alimentos"
+  "description": "Tienda de alimentos",
+  "latitude": 4.7110,
+  "longitude": -74.0721,
+  "nit": "123456789"
 }
 
 # ============================================
@@ -117,12 +132,32 @@ Content-Type: application/json
 # Headers:
 #   Authorization: Bearer <token>
 # Respuesta exitosa (200):
-#   { "message": "Logout exitoso" }
-# Nota: En JWT, el logout se maneja del lado del cliente
-# eliminando el token. En el backend, esta endpoint
-# puedeser usada para invalidar tokens en blacklist.
+#   { "message": "Sesión cerrada exitosamente. Asegúrese de eliminar el token en el cliente." }
+# Nota: En JWT, el logout se maneja del lado del cliente eliminando el token.
 
 ###
 # Cerrar sesión
 POST {{baseURL}}/auth/logout
+Authorization: Bearer {{token}}
+
+# ============================================
+# GET /auth/me
+# ----------------------------------
+# Descripción: Obtiene el perfil del usuario actual autenticado.
+# Autenticación: REQUERIDA - Bearer token.
+# Headers:
+#   Authorization: Bearer <token>
+# Respuesta exitosa (200):
+#   {
+#     "user": {
+#       "id": "uuid-del-usuario",
+#       "email": "juan@example.com",
+#       "name": "Juan Perez",
+#       "role": "CLIENT"
+#     }
+#   }
+
+###
+# Obtener perfil del usuario actual
+GET {{baseURL}}/auth/me
 Authorization: Bearer {{token}}

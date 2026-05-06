@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../home/presentation/screens/client_home_screen.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../data/models/auth_model.dart';
+import 'account_type_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _authRepository = AuthRepository();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -18,6 +23,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool obscurePassword = true;
   bool isLoading = false;
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final authResponse = await _authRepository.login(
+        emailController.text.trim(),
+        passwordController.text,
+      );
+
+      if (mounted) {
+        _navigateByRole(authResponse.user);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  void _navigateByRole(UserModel user) {
+    final destination = user.isMerchant
+        ? const DashboardScreen()
+        : const ClientHomeScreen();
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,9 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: navegación recuperación password
-                    },
+                    onPressed: () {},
                     child: const Text(
                       "¿Olvidaste tu contraseña?",
                       style: TextStyle(color: Colors.black87),
@@ -122,18 +161,38 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 80),
 
                 CustomButton(
-                  text: "Iniciar Sesión",
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ClientHomeScreen(),
-                      ),
-                    );
-                  },
+                  text: isLoading ? "Cargando..." : "Iniciar Sesión",
+                  isLoading: isLoading,
+                  onPressed: isLoading ? null : _handleLogin,
                 ),
 
                 const SizedBox(height: 30),
+
+                Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("¿No tienes cuenta? "),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AccountTypeScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          "Crear cuenta",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

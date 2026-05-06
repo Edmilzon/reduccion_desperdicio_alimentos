@@ -3,6 +3,8 @@ import 'login_screen.dart';
 import '../../../../shared/widgets/custom_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_label.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 
 class CommerceAccessScreen extends StatefulWidget {
   final String ownerName;
@@ -20,6 +22,7 @@ class CommerceAccessScreen extends StatefulWidget {
 }
 
 class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
+  final _authRepository = AuthRepository();
   final _formKey = GlobalKey<FormState>();
 
   final emailController = TextEditingController();
@@ -33,6 +36,45 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
 
   bool get passwordsMatch =>
       passwordController.text == confirmPasswordController.text;
+
+  Future<void> _handleRegister() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Debes aceptar los términos")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      await _authRepository.registerCommerce(
+        ownerName: widget.ownerName,
+        email: emailController.text.trim().toLowerCase(),
+        password: passwordController.text,
+        commerceName: widget.commerceName,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registro exitoso")),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   // ---------------- VALIDATORS ----------------
 
@@ -54,8 +96,8 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
       return "La contraseña es obligatoria";
     }
 
-    if (value.length < 6) {
-      return "Mínimo 6 caracteres";
+    if (value.length < 8) {
+      return "Mínimo 8 caracteres";
     }
 
     if (!RegExp(r'[A-Z]').hasMatch(value)) {
@@ -192,33 +234,9 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
               const SizedBox(height: 25),
 
               CustomButton(
-                text: "REGISTRARSE",
+                text: isLoading ? "Cargando..." : "REGISTRARSE",
                 isLoading: isLoading,
-                onPressed: () async {
-                  if (!_formKey.currentState!.validate()) return;
-                  if (!acceptedTerms) return;
-
-                  setState(() => isLoading = true);
-
-                  await Future.delayed(
-                    const Duration(seconds: 1),
-                  );
-
-                  setState(() => isLoading = false);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Registro exitoso 🚀"),
-                    ),
-                  );
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const Placeholder(),
-                    ),
-                  );
-                },
+                onPressed: isLoading ? null : _handleRegister,
               ),
 
               const SizedBox(height: 20),
