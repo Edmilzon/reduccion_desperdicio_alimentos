@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
   const MyOffersScreen({super.key});
@@ -13,49 +17,43 @@ class MyOffersScreen extends StatefulWidget {
 class _MyOffersScreenState extends State<MyOffersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Datos de prueba — se reemplazarán con Firebase
-  final _ofertas = [
-    OfertaModel(
-      id: '1',
-      categoria: 'Panadería',
-      nombre: 'Pack Croissants Artesanos',
-      unidadesRestantes: 8,
-      precio: 4.50,
-      precioOriginal: 12.00,
-      estado: 'active',
-      horaLimite: DateTime.now().add(const Duration(hours: 2)),
-      creadaEn: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    OfertaModel(
-      id: '2',
-      categoria: 'Frutería',
-      nombre: 'Cesta Frutas de Temporada',
-      unidadesRestantes: 0,
-      precio: 8.20,
-      precioOriginal: 15.00,
-      estado: 'sold',
-      horaLimite: DateTime.now().subtract(const Duration(hours: 2)),
-      creadaEn: DateTime.now().subtract(const Duration(hours: 6)),
-    ),
-    OfertaModel(
-      id: '3',
-      categoria: 'Platos Listos',
-      nombre: 'Lasaña Vegetariana (2pax)',
-      unidadesRestantes: 3,
-      precio: 6.90,
-      precioOriginal: 14.50,
-      estado: 'active',
-      horaLimite: DateTime.now().add(const Duration(hours: 1)),
-      creadaEn: DateTime.now().subtract(const Duration(minutes: 30)),
-    ),
-  ];
+  final _repo = DashboardRepository();
+  final _authRepo = AuthRepository();
+  
+  List<OfertaModel> _ofertas = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() {}));
+    cargarOfertas();
+  }
+
+  Future<void> cargarOfertas() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final ofertas = await _repo.getMisOfertas();
+      if (mounted) {
+        setState(() {
+          _ofertas = ofertas;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -64,7 +62,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     super.dispose();
   }
 
-  List<OfertaModel> get _actuales  => _ofertas.where((o) => o.isActive).toList();
+  List<OfertaModel> get _actuales => _ofertas.where((o) => o.isActive).toList();
   List<OfertaModel> get _historial => _ofertas.where((o) => o.isSold).toList();
 
   @override
@@ -72,46 +70,62 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAppBar(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  SizedBox(height: 16),
-                  Text(
-                    'Mis Excedentes',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: cargarOfertas,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
                     ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildAppBar(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            SizedBox(height: 16),
+                            Text(
+                              'Mis Excedentes',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Gestiona tus publicaciones actuales y pasadas.',
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                            SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                      _buildTabBar(),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildLista(_actuales),
+                            _buildLista(_historial),
+                          ],
+                        ),
+                      ),
+                      _buildResumenSemanal(),
+                    ],
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Gestiona tus publicaciones actuales y pasadas.',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                  SizedBox(height: 16),
-                ],
-              ),
-            ),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildLista(_actuales),
-                  _buildLista(_historial),
-                ],
-              ),
-            ),
-            _buildResumenSemanal(),
-          ],
-        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
@@ -124,16 +138,12 @@ class _MyOffersScreenState extends State<MyOffersScreen>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
           const Expanded(
             child: Text(
-              'owner',
+              'Mi Tienda',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.primary,
@@ -145,10 +155,54 @@ class _MyOffersScreenState extends State<MyOffersScreen>
           CircleAvatar(
             radius: 18,
             backgroundColor: AppColors.cardBg,
-            child: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
+              onPressed: _showOptionsMenu,
+            ),
           ),
           const SizedBox(width: 8),
         ],
+      ),
+    );
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.shopping_bag_outlined),
+              title: const Text('Ver como Cliente'),
+              subtitle: const Text('Ver productos y comprar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ShopScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                Navigator.pop(context);
+                await _authRepo.logout();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -190,25 +244,31 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      itemCount: lista.length,
-      itemBuilder: (_, i) => OfferCard(
-        oferta: lista[i],
-        onEdit: () => _onEdit(lista[i]),
-        onDelete: () => _onDelete(lista[i]),
+    return RefreshIndicator(
+      onRefresh: cargarOfertas,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        itemCount: lista.length,
+        itemBuilder: (_, i) => OfferCard(
+          oferta: lista[i],
+          onEdit: () => _onEdit(lista[i]),
+          onDelete: () => _onDelete(lista[i]),
+        ),
       ),
     );
   }
 
   Widget _buildResumenSemanal() {
+    final ahorro = _historial.fold<double>(0, (sum, o) => sum + (o.originalPrice - o.price));
+    final recuperado = _historial.fold<double>(0, (sum, o) => sum + o.price);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.summaryBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.secondary.withAlpha(77)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,8 +284,8 @@ class _MyOffersScreenState extends State<MyOffersScreen>
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _resumenStat('24.5kg', 'AHORRO ESTIMADO')),
-              Expanded(child: _resumenStat('128 Bs.', 'RECUPERADO')),
+              Expanded(child: _resumenStat('${ahorro.toStringAsFixed(1)}kg', 'AHORRO ESTIMADO')),
+              Expanded(child: _resumenStat('${recuperado.toStringAsFixed(0)} Bs.', 'RECUPERADO')),
             ],
           ),
         ],
@@ -265,7 +325,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         title: const Text('Editar oferta'),
         content: Text('Editar: ${oferta.nombre}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('cerrar')),
         ],
       ),
     );
@@ -280,7 +340,19 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _repo.deleteProduct(oferta.id);
+                cargarOfertas();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              }
+            },
             child: const Text('Eliminar', style: TextStyle(color: AppColors.primary)),
           ),
         ],

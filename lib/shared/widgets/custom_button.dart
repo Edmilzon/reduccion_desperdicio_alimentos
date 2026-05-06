@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -19,7 +20,7 @@ class CustomButton extends StatelessWidget {
       height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.primary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),

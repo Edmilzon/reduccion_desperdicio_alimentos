@@ -51,9 +51,9 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
       return "El teléfono es obligatorio";
     }
 
-    final regex = RegExp(r'^\+?[0-9]{7,12}$');
+    final regex = RegExp(r'^[0-9]{8,12}$');
     if (!regex.hasMatch(value)) {
-      return "Número no válido";
+      return "Debe tener entre 8 y 12 dígitos";
     }
 
     return null;

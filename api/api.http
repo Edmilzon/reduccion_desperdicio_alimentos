@@ -1,72 +1,269 @@
 # ============================================
-# ECO BOCADO - API REFERENCE
+# API ECO BOCADO - Guía Completa
 # ============================================
-# Documentación completa de todos los endpoints de la API.
-# 
-# Para usar esta colección:
-# 1. Instala la extensión "REST Client" en VS Code
-# 2. Configura las variables en cada archivo según tu entorno
-# 3. Ejecuta las peticiones desde los archivos individuales
-#
-# Orden recomendado de uso:
-# 1. auth.http - Registrar / Iniciar sesión
-# 2. products.http - Ver productos (público)
-# 3. orders.http - Crear pedido (requiere token)
-# 4. dashboard.http - Ver estadísticas (requiere token)
-#
-# ============================================
-# CONFIGURACIÓN GLOBAL
-# ============================================
-# Cambia estos valores según tu entorno de desarrollo
-###
-@baseURL = http://localhost:3000
-@token = 
-@userId = 
-@commerceId = 
-@productId = 
-@orderId = 
+# Documentación del flujo completo de la API.
+# Base URL: http://localhost:3000
 
-# ============================================
-# RESUMEN DE ENDPOINTS
-# ============================================
-#
-# --- AUTH (Autenticación) ---
-# POST /auth/register          - Registrar usuario
-# POST /auth/login           - Iniciar sesión
-# POST /auth/register-commerce - Registrar owner con comercio
-# POST /auth/logout          - Cerrar sesión
-#
-# --- COMMERCES (Comercios) ---
-# POST /commerces            - Crear comercio
-# GET /commerces             - Listar comercios
-# GET /commerces/:id         - Ver comercio
-# PATCH /commerces/:id       - Actualizar comercio
-# DELETE /commerces/:id      - Eliminar comercio
-#
-# --- PRODUCTS (Productos) ---
-# POST /products             - Crear producto
-# GET /products             - Listar productos
-# GET /products/:id        - Ver producto
-# GET /products/commerce/:id - Productos por comercio
-# PATCH /products/:id       - Actualizar producto
-# DELETE /products/:id     - Eliminar producto
-#
-# --- ORDERS (Pedidos) ---
-# POST /orders               - Crear pedido
-# GET /orders/my-orders    - Mis pedidos
-# PATCH /orders/:id/cancel - Cancelar pedido
-#
-# --- DASHBOARD (Estadísticas) ---
-# GET /dashboard/commerce/:id - Estadísticas del comercio
-#
-# ============================================
-# CÓDIGOS DE ESTADO HTTP
-# ============================================
-# 200 OK - Solicitud exitosa
-# 201 Created - Recurso creado exitosamente
-# 400 Bad Request - Datos inválidos
-# 401 Unauthorized - Sin autenticación
-# 403 Forbidden - Sin permisos
-# 404 Not Found - Recurso no encontrado
-# 409 Conflict - Conflicto (ej: email ya existe)
-# 500 Internal Server Error - Error del servidor
+@baseURL = https://reduccion-desperdicio-backend.vercel.app/
+
+# ==============================================================================
+# AUTHENTICATION - Autenticación
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Registrar cliente (usuario normal)
+# ------------------------------------------------------------------------------
+# Rol por defecto: CLIENT
+POST {{baseURL}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Juan Perez",
+  "email": "juan@example.com",
+  "password": "password123"
+}
+
+# Respuesta: { user, access_token }
+
+# ------------------------------------------------------------------------------
+# 2. Registrar comerciante con comercio (flujo completo)
+# ------------------------------------------------------------------------------
+# Crea usuario con rol MERCHANT Y crea su comercio automáticamente.
+# Ya quedan vinculados: owner -> commerce
+POST {{baseURL}}/auth/register-commerce
+Content-Type: application/json
+
+{
+  "ownerName": "Juan Perez",
+  "email": "tienda@example.com",
+  "password": "password123",
+  "commerceName": "Panadería Don Juan",
+  "description": "Panadería fresca",
+  "nit": "123456789"
+}
+
+# Respuesta: { user, commerce: { id, name }, access_token }
+# Importante: Guarda el commerce.id para siguientes pasos.
+
+# ------------------------------------------------------------------------------
+# 3. Iniciar sesión
+# ------------------------------------------------------------------------------
+POST {{baseURL}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "tienda@example.com",
+  "password": "password123"
+}
+
+# Respuesta: { user, access_token }
+
+# ------------------------------------------------------------------------------
+# 4. Ver perfil actual
+# ------------------------------------------------------------------------------
+# Si el usuario es MERCHANT, también devuelve su comercio.
+@token = your_jwt_token_here
+
+GET {{baseURL}}/auth/me
+Authorization: Bearer {{token}}
+
+# Ejemplo respuesta (MERCHANT):
+# {
+#   "user": { "id": 1, "email": "...", "name": "...", "role": "MERCHANT" },
+#   "commerce": { "id": 1, "name": "Panadería Don Juan" }
+# }
+
+# Ejemplo respuesta (CLIENT):
+# {
+#   "user": { "id": 1, "email": "...", "name": "...", "role": "CLIENT" }
+# }
+
+# ------------------------------------------------------------------------------
+# 5. Cerrar sesión
+# ------------------------------------------------------------------------------
+POST {{baseURL}}/auth/logout
+Authorization: Bearer {{token}}
+
+# ==============================================================================
+# COMMERCES - Comercios
+# ==============================================================================
+
+@commerceId = 1
+
+# ------------------------------------------------------------------------------
+# 1. Listar todos los comercios
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/commerces
+
+# ------------------------------------------------------------------------------
+# 2. Ver un comercio específico
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/commerces/{{commerceId}}
+
+# ------------------------------------------------------------------------------
+# 3. Ver productos de un comercio
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/commerces/{{commerceId}}/products
+
+# ------------------------------------------------------------------------------
+# 4. Actualizar comercio (solo owner)
+# ------------------------------------------------------------------------------
+PATCH {{baseURL}}/commerces/{{commerceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nuevo Nombre",
+  "description": "Nueva descripción"
+}
+
+# ------------------------------------------------------------------------------
+# 5. Eliminar comercio (solo owner)
+# ------------------------------------------------------------------------------
+DELETE {{baseURL}}/commerces/{{commerceId}}
+Authorization: Bearer {{token}}
+
+# ==============================================================================
+# PRODUCTS - Productos
+# ==============================================================================
+
+@productId = 1
+
+# ------------------------------------------------------------------------------
+# 1. Listar productos activos (con filtros opcionales)
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products
+# ?categoryId=1&commerceId=1
+
+# ------------------------------------------------------------------------------
+# 2. Ver todos los productos (sin filtro status)
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/all
+
+# ------------------------------------------------------------------------------
+# 3. Buscar productos
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/search?q=pan
+
+# ------------------------------------------------------------------------------
+# 4. Ver productos de un comercio
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/commerce/{{commerceId}}
+# ?status=active&categoryId=1
+
+# ------------------------------------------------------------------------------
+# 5. Ver estadísticas del comercio (del día)
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/commerce/{{commerceId}}/stats
+Authorization: Bearer {{token}}
+
+# ------------------------------------------------------------------------------
+# 6. Ver un producto específico
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/{{productId}}
+
+# ------------------------------------------------------------------------------
+# 7. Listar categorías
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/products/categories
+
+# ------------------------------------------------------------------------------
+# 8. Ver productos por categoría
+# ------------------------------------------------------------------------------
+@categoryId = 1
+
+GET {{baseURL}}/products/category/{{categoryId}}
+# ?commerceId=1
+
+# ------------------------------------------------------------------------------
+# 9. Crear producto (solo owner del comercio)
+# ------------------------------------------------------------------------------
+POST {{baseURL}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Pan Integral",
+  "description": "Pan integral fresco",
+  "originalPrice": 5.00,
+  "price": 3.50,
+  "quantity": 20,
+  "pickupStart": "2026-05-06T08:00:00Z",
+  "pickupEnd": "2026-05-06T14:00:00Z",
+  "commerceId": 1,
+  "categoryId": 1
+}
+
+# ------------------------------------------------------------------------------
+# 10. Actualizar producto (solo owner)
+# ------------------------------------------------------------------------------
+PATCH {{baseURL}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Pan Actualizado",
+  "price": 4.00,
+  "quantity": 15
+}
+
+# ------------------------------------------------------------------------------
+# 11. Eliminar producto (soft delete, solo owner)
+# ------------------------------------------------------------------------------
+DELETE {{baseURL}}/products/{{productId}}
+Authorization: Bearer {{token}}
+
+# ==============================================================================
+# ORDERS - Pedidos
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Crear pedido
+# ------------------------------------------------------------------------------
+@productId = 1
+
+POST {{baseURL}}/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": 1,
+  "quantity": 2
+}
+
+# ------------------------------------------------------------------------------
+# 2. Ver mis pedidos
+# ------------------------------------------------------------------------------
+GET {{baseURL}}/orders/my-orders
+Authorization: Bearer {{token}}
+
+# ------------------------------------------------------------------------------
+# 3. Cancelar pedido
+# ------------------------------------------------------------------------------
+@orderId = 1
+
+PATCH {{baseURL}}/orders/{{orderId}}/cancel
+Authorization: Bearer {{token}}
+
+# ==============================================================================
+# RESUMEN DE FLUJOS
+# ==============================================================================
+
+# === FLUJO 1: Cliente compra producto ===
+# 1. POST /auth/register (CLIENT)
+# 2. GET /products o /products/commerce/:id
+# 3. POST /orders (con token)
+
+# === FLUJO 2: Comerciante registra tienda ===
+# 1. POST /auth/register-commerce → { user, commerce, token }
+# 2. GET /auth/me (verificar)
+# 3. GET /commerces/:id (ver comercio)
+# 4. GET /commerces/:id/products (ver productos)
+
+# === FLUJO 3: Comerciante gestiona productos ===
+# 1. POST /auth/register-commerce
+# 2. POST /products (crear producto)
+# 3. GET /products/commerce/:id (ver mis productos)
+# 4. GET /products/commerce/:id/stats (ver estadísticas)
+# 5. PATCH /products/:id (actualizar)
+# 6. DELETE /products/:id (eliminar)
