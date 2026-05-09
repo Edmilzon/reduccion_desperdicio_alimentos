@@ -63,6 +63,29 @@ class _ShopScreenState extends State<ShopScreen> {
     setState(() {
       _searchQuery = query;
     });
+    if (query.isNotEmpty) {
+      _searchAll(query);
+    } else {
+      _loadData();
+    }
+  }
+
+  Future<void> _searchAll(String query) async {
+    setState(() => _isLoading = true);
+    try {
+      final results = await _repository.searchProducts(query);
+      final allCommerces = await _repository.getCommerces();
+      setState(() {
+        _filteredProducts = results;
+        _commerces = allCommerces;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   void _onFilterCategory(int? categoryId) {
@@ -89,7 +112,7 @@ class _ShopScreenState extends State<ShopScreen> {
       ),
       body: Column(
         children: [
-          _buildFilters(),
+          if (!showProducts) _buildFilters(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -97,7 +120,7 @@ class _ShopScreenState extends State<ShopScreen> {
                     ? _buildErrorView()
                     : showProducts
                         ? filteredProducts.isEmpty
-                            ? const Center(child: Text('No hay productos'))
+                            ? const Center(child: Text('No hay resultados'))
                             : _buildProductList(filteredProducts)
                         : filteredCommerces.isEmpty
                             ? const Center(child: Text('No hay restaurantes'))
