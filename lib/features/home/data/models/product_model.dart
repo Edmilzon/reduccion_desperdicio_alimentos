@@ -61,6 +61,7 @@ class ProductModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final CategoryModel? category;
+  final int? commerceId;
 
   ProductModel({
     required this.id,
@@ -76,6 +77,7 @@ class ProductModel {
     this.createdAt,
     this.updatedAt,
     this.category,
+    this.commerceId,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -92,9 +94,10 @@ class ProductModel {
       status: json['status'] ?? 'active',
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
-      category: json['category'] != null 
-          ? CategoryModel.fromJson(json['category']) 
+      category: json['category'] != null
+          ? CategoryModel.fromJson(json['category'])
           : CategoryModel(id: 0, name: '', slug: ''),
+      commerceId: json['commerceId'] ?? json['commerce_id'],
     );
   }
 
@@ -106,4 +109,47 @@ class ProductModel {
   }
 
   bool get isAvailable => quantity > 0 && status == 'active';
+}
+
+class CommerceModel {
+  final int id;
+  final String name;
+  final String? description;
+  final String? latitude;
+  final String? longitude;
+  final String? rating;
+  final String? imageUrl;
+  final String? nit;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  CommerceModel({
+    required this.id,
+    required this.name,
+    this.description,
+    this.latitude,
+    this.longitude,
+    this.rating,
+    this.imageUrl,
+    this.nit,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory CommerceModel.fromJson(Map<String, dynamic> json) {
+    return CommerceModel(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'],
+      latitude: json['latitude']?.toString(),
+      longitude: json['longitude']?.toString(),
+      rating: json['rating']?.toString(),
+      imageUrl: json['imageUrl'],
+      nit: json['nit'],
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+    );
+  }
+
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 }

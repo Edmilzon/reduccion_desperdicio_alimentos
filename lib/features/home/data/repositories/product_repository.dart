@@ -119,4 +119,22 @@ class ProductRepository {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  Future<List<CommerceModel>> getCommerces() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/commerces'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => CommerceModel.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar comercios: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }
