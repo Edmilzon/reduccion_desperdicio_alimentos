@@ -19,6 +19,7 @@ class ShellWrapper extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: Text(
           title,
           style: const TextStyle(
