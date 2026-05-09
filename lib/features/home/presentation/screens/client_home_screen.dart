@@ -15,12 +15,12 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
 
-  final _screens = const [
-    MenuScreen(),
-    ShopScreen(),
-    Center(child: Text('Carrito', style: TextStyle(fontSize: 24))),
-    Center(child: Text('Favoritos', style: TextStyle(fontSize: 24))),
-    ProfileScreen(),
+  final _screens = [
+    const MenuScreen(),
+    const ShopScreen(),
+    const _PlaceholderTab(label: 'Carrito'),
+    const _PlaceholderTab(label: 'Favoritos'),
+    const ProfileScreen(),
   ];
 
   @override
@@ -48,6 +48,18 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
       ),
+    );
+  }
+}
+
+class _PlaceholderTab extends StatelessWidget {
+  final String label;
+  const _PlaceholderTab({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(label, style: const TextStyle(fontSize: 24)),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/commerce_products_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/shell_wrapper.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -136,7 +137,9 @@ class _ShopScreenState extends State<ShopScreen> {
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => CommerceProductsScreen(commerce: commerce),
+                                        builder: (_) => ShellWrapper(
+                                          child: CommerceProductsScreen(commerce: commerce),
+                                        ),
                                       ),
                                     ),
                                   );
@@ -160,7 +163,9 @@ class _ShopScreenState extends State<ShopScreen> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ProductDetailScreen(productId: product.id),
+              builder: (_) => ShellWrapper(
+                child: ProductDetailScreen(productId: product.id),
+              ),
             ),
           ),
         );

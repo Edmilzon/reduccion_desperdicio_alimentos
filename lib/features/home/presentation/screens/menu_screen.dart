@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/shell_wrapper.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
 import '../widgets/featured_product_card.dart';
@@ -101,7 +102,9 @@ class _MenuScreenState extends State<MenuScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ProductDetailScreen(productId: _products.first.id),
+                          builder: (_) => ShellWrapper(
+                            child: ProductDetailScreen(productId: _products.first.id),
+                          ),
                         ),
                       ),
                     ),
@@ -137,13 +140,17 @@ class _MenuScreenState extends State<MenuScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProductDetailScreen(productId: product.id),
+                        builder: (_) => ShellWrapper(
+                          child: ProductDetailScreen(productId: product.id),
+                        ),
                       ),
                     ),
                     onVer: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProductDetailScreen(productId: product.id),
+                        builder: (_) => ShellWrapper(
+                          child: ProductDetailScreen(productId: product.id),
+                        ),
                       ),
                     ),
                   );

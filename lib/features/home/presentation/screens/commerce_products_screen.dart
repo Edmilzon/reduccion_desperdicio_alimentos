@@ -3,6 +3,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/shell_wrapper.dart';
 
 class CommerceProductsScreen extends StatefulWidget {
   final CommerceModel commerce;
@@ -136,7 +137,9 @@ class _CommerceProductsScreenState extends State<CommerceProductsScreen> {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ProductDetailScreen(productId: filtered[index].id),
+                                  builder: (_) => ShellWrapper(
+                                    child: ProductDetailScreen(productId: filtered[index].id),
+                                  ),
                                 ),
                               ),
                               child: _ProductItem(product: filtered[index]),
