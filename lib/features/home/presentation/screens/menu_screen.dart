@@ -140,6 +140,12 @@ class _MenuScreenState extends State<MenuScreen> {
                         builder: (_) => ProductDetailScreen(productId: product.id),
                       ),
                     ),
+                    onVer: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(productId: product.id),
+                      ),
+                    ),
                   );
                 },
                 childCount: _products.length > 1 ? _products.length - 1 : 0,
