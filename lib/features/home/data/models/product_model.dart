@@ -81,6 +81,10 @@ class ProductModel {
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    int? cid = json['commerceId'] ?? json['commerce_id'];
+    if (cid == null && json['commerce'] != null) {
+      cid = json['commerce']['id'];
+    }
     return ProductModel(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
@@ -97,7 +101,7 @@ class ProductModel {
       category: json['category'] != null
           ? CategoryModel.fromJson(json['category'])
           : CategoryModel(id: 0, name: '', slug: ''),
-      commerceId: json['commerceId'] ?? json['commerce_id'],
+      commerceId: cid,
     );
   }
 

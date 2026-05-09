@@ -100,6 +100,12 @@ class _ShopScreenState extends State<ShopScreen> {
                                 products: _filteredProducts
                                     .where((p) => p.commerceId == commerce.id)
                                     .toList(),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CommerceProductsScreen(commerce: commerce),
+                                  ),
+                                ),
                               );
                             },
                           ),
@@ -368,109 +374,106 @@ class _ShopScreenState extends State<ShopScreen> {
 class _CommerceCard extends StatelessWidget {
   final CommerceModel commerce;
   final List<ProductModel> products;
+  final VoidCallback? onTap;
 
-  const _CommerceCard({required this.commerce, required this.products});
+  const _CommerceCard({required this.commerce, required this.products, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final discount = products.isNotEmpty
-        ? products.map((p) => p.discountPercentage).reduce((a, b) => a > b ? a : b)
-        : 0.0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Stack(
-        children: [
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppColors.cardBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Stack(
+          children: [
+            Container(
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppColors.cardBg,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                    ),
+                    child: _buildImage(),
                   ),
-                  child: _buildImage(),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          commerce.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (commerce.description != null) ...[
-                          const SizedBox(height: 4),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Text(
-                            commerce.description!,
+                            commerce.name,
                             style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (commerce.description != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              commerce.description!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ],
-                        const SizedBox(height: 4),
-                        Text(
-                          '${products.length} productos',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (discount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '-${discount.round()}%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 16),
-                  child: Icon(
-                    Icons.arrow_forward_ios,
-                    color: AppColors.textSecondary,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (discount > 0)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '-${discount.round()}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  double get discount {
+    if (products.isEmpty) return 0;
+    return products.map((p) => p.discountPercentage).reduce((a, b) => a > b ? a : b);
   }
 
   Widget _buildImage() {
