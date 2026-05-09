@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/commerce_products_screen.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -40,7 +41,9 @@ class _ShopScreenState extends State<ShopScreen> {
     setState(() => _isLoading = true);
     try {
       final categories = await _repository.getCategories();
-      final products = await _repository.getAllProducts();
+      final products = await _repository.getProductsWithFilters(
+        categoryId: _selectedCategoryId,
+      );
       final commerces = await _repository.getCommerces();
       setState(() {
         _categories = categories;
@@ -65,12 +68,16 @@ class _ShopScreenState extends State<ShopScreen> {
   void _onFilterCategory(int? categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
+      _isLoading = true;
     });
+    _loadData();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredCommerces = _getFilteredCommerces();
+    final showProducts = _selectedCategoryId != null || _searchQuery.isNotEmpty;
+    final filteredProducts = _getFilteredProducts();
+    final filteredCommerces = showProducts ? <CommerceModel>[] : _getFilteredCommerces();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -88,30 +95,53 @@ class _ShopScreenState extends State<ShopScreen> {
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : _error != null
                     ? _buildErrorView()
-                    : filteredCommerces.isEmpty
-                        ? const Center(child: Text('No hay restaurantes'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: filteredCommerces.length,
-                            itemBuilder: (context, index) {
-                              final commerce = filteredCommerces[index];
-                              return _CommerceCard(
-                                commerce: commerce,
-                                products: _filteredProducts
-                                    .where((p) => p.commerceId == commerce.id)
-                                    .toList(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => CommerceProductsScreen(commerce: commerce),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                    : showProducts
+                        ? filteredProducts.isEmpty
+                            ? const Center(child: Text('No hay productos'))
+                            : _buildProductList(filteredProducts)
+                        : filteredCommerces.isEmpty
+                            ? const Center(child: Text('No hay restaurantes'))
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: filteredCommerces.length,
+                                itemBuilder: (context, index) {
+                                  final commerce = filteredCommerces[index];
+                                  return _CommerceCard(
+                                    commerce: commerce,
+                                    products: _filteredProducts.where((p) => p.commerceId == commerce.id).toList(),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CommerceProductsScreen(commerce: commerce),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProductList(List<ProductModel> products) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        final commerce = _commerces.firstWhere((c) => c.id == product.commerceId, orElse: () => CommerceModel(id: 0, name: 'Sin nombre'));
+        return _ProductItem(
+          product: product,
+          commerceName: commerce.name,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CommerceProductsScreen(commerce: commerce),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -325,6 +355,39 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
+  List<ProductModel> _getFilteredProducts() {
+    var filtered = List<ProductModel>.from(_filteredProducts);
+
+    if (_selectedCategoryId != null) {
+      filtered = filtered.where((p) => p.category?.id == _selectedCategoryId).toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filtered = filtered.where((p) {
+        return p.title.toLowerCase().contains(q) ||
+            p.description.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    if (_status != 'all') {
+      filtered = filtered.where((p) => p.status == _status).toList();
+    }
+
+    switch (_sortBy) {
+      case 'precio':
+        filtered.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'descuento':
+        filtered.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
+        break;
+      default:
+        filtered.sort((a, b) => a.title.compareTo(b.title));
+    }
+
+    return filtered;
+  }
+
   List<CommerceModel> _getFilteredCommerces() {
     var categoryCommerces = _selectedCategoryId != null
         ? _commerces.where((c) => _filteredProducts.any((p) => p.commerceId == c.id && p.category?.id == _selectedCategoryId)).toList()
@@ -492,5 +555,99 @@ class _CommerceCard extends StatelessWidget {
       );
     }
     return const Icon(Icons.store, size: 48, color: AppColors.primary);
+  }
+}
+
+class _ProductItem extends StatelessWidget {
+  final ProductModel product;
+  final String commerceName;
+  final VoidCallback? onTap;
+
+  const _ProductItem({required this.product, required this.commerceName, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final discount = product.discountPercentage;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+              ),
+              child: product.imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                      child: Image.network(product.imageUrl, fit: BoxFit.cover, width: 100, height: 100,
+                        errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+                      ),
+                    )
+                  : const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      commerceName,
+                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.title,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.description,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                        if (discount > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '\$${product.originalPrice.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textLight, decoration: TextDecoration.lineThrough),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(6)),
+                            child: Text('-${discount.round()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
