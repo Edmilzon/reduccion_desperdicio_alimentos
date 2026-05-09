@@ -41,4 +41,82 @@ class ProductRepository {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  Future<List<ProductModel>> searchProducts(String query) async {
+    if (query.isEmpty) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/products/search?q=$query'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => ProductModel.fromJson(json)).toList();
+      } else {
+        throw Exception('Error en búsqueda: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<List<ProductModel>> getProductsWithFilters({
+    int? categoryId,
+    int? commerceId,
+  }) async {
+    final queryParams = <String>[];
+    if (categoryId != null) queryParams.add('categoryId=$categoryId');
+    if (commerceId != null) queryParams.add('commerceId=$commerceId');
+
+    final url = queryParams.isNotEmpty
+        ? '$baseUrl/products?${queryParams.join('&')}'
+        : '$baseUrl/products';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => ProductModel.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar productos: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<List<ProductModel>> getProductsByCommerce(
+    int commerceId, {
+    String? status,
+    int? categoryId,
+  }) async {
+    final queryParams = <String>[];
+    if (status != null) queryParams.add('status=$status');
+    if (categoryId != null) queryParams.add('categoryId=$categoryId');
+
+    final url = queryParams.isNotEmpty
+        ? '$baseUrl/products/commerce/$commerceId?${queryParams.join('&')}'
+        : '$baseUrl/products/commerce/$commerceId';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => ProductModel.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar productos: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }

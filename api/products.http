@@ -1,75 +1,114 @@
 # ============================================
-# PRODUCTS - Productos
+# PRODUCTS - Productos (Eco Bocado)
 # ============================================
-# Los productos pertenecen a un comercio y tienen categoría.
-# Para documentación completa ver api/api.http
+# Módulo para gestionar productos excedentes de comercios.
+# Los productos tienen categoría y pertencen a un comercio.
 #
-# Base URL: http://localhost:3000
+# Endpoints disponibles:
+#   - GET /products              → Listar productos activos
+#   - GET /products/all           → Listar todos con categoría
+#   - GET /products/search?q=     → Buscar por título/descripción/comercio
+#   - GET /products/categories    → Listar categorías
+#   - GET /products/category/:id  → Productos por categoría
+#   - GET /products/commerce/:id  → Productos por comercio
+#   - GET /products/commerce/:id/stats → Estadísticas del comercio
+#   - GET /products/:id           → Detalle de producto
+#   - POST /products              → Crear producto (auth requerido)
+#   - PATCH /products/:id         → Actualizar producto (auth requerido)
+#   - DELETE /products/:id        → Eliminar producto (auth requerido)
+#
+# Base URL: http://localhost:3000 (desarrollo)
+# Producción: https://reduccion-desperdicio-backend.vercel.app/
 
-@baseURL = http://localhost:3000
+@baseURL = https://reduccion-desperdicio-backend.vercel.app/
 @token = your_jwt_token_here
 @commerceId = 1
 @productId = 1
 @categoryId = 1
 
 # ============================================
-# GET - CONSULTAS
+# GET - CONSULTAS PÚBLICAS
 # ============================================
 
-# Listar todos los productos con su categoría (sin filtros)
+### Listar todos los productos con su categoría
 GET {{baseURL}}/products/all
 
-# Buscar productos por título, descripción o nombre del comercio
+### Buscar productos por título, descripción o nombre del comercio
 GET {{baseURL}}/products/search?q=pan
 
-# Listar todos los productos (filtros: categoryId, commerceId)
+### Listar productos activos (filtros opcionales: categoryId, commerceId)
+GET {{baseURL}}/products
+###
+GET {{baseURL}}/products?categoryId={{categoryId}}
+###
+GET {{baseURL}}/products?commerceId={{commerceId}}
+###
 GET {{baseURL}}/products?categoryId={{categoryId}}&commerceId={{commerceId}}
 
-# Obtener productos por comercio (filtros: status, categoryId)
-GET {{baseURL}}/products/commerce/{{commerceId}}?status=active&categoryId={{categoryId}}
-
-# Obtener estadísticas del comercio (requiere autenticación)
-GET {{baseURL}}/products/commerce/{{commerceId}}/stats
-Authorization: Bearer {{token}}
-
-# Obtener producto por ID
+### Obtener producto por ID
 GET {{baseURL}}/products/{{productId}}
 
-# --- Categorías ---
+# ============================================
+# GET - CATEGORÍAS
+# ============================================
 
-### Listar todas las categorías (solo categorías, sin productos)
+### Listar todas las categorías
 GET {{baseURL}}/products/categories
 
-# Obtener productos por categoría
+### Obtener productos por categoría
+GET {{baseURL}}/products/category/{{categoryId}}
+###
 GET {{baseURL}}/products/category/{{categoryId}}?commerceId={{commerceId}}
 
 # ============================================
-# POST - CREAR
+# GET - CONSULTAS POR COMERCIO
 # ============================================
 
-# Crear producto (requiere autenticación)
+### Obtener productos por comercio (filtros: status, categoryId)
+### status: "active" | "sold_out" | "expired" (default: active)
+GET {{baseURL}}/products/commerce/{{commerceId}}
+###
+GET {{baseURL}}/products/commerce/{{commerceId}}?status=active
+###
+GET {{baseURL}}/products/commerce/{{commerceId}}?status=sold_out
+###
+GET {{baseURL}}/products/commerce/{{commerceId}}?status=active&categoryId={{categoryId}}
+
+### Obtener estadísticas del comercio (requiere autenticación)
+### Devuelve: ofertas activas, ofertas hoy, pedidos hoy, ventas hoy,
+###            unidades vendidas, ofertas cerca de vencer (<2h)
+GET {{baseURL}}/products/commerce/{{commerceId}}/stats
+Authorization: Bearer {{token}}
+
+# ============================================
+# POST - CREAR PRODUCTO
+# ============================================
+
+### Crear producto (requiere autenticación)
+### Solo el owner del comercio puede crear productos
 POST {{baseURL}}/products
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "title": "Pan Integral",
-  "description": "Pan integral fresco",
+  "description": "Pan integral fresco del día",
   "originalPrice": 5.00,
   "price": 3.50,
   "quantity": 20,
-  "pickupStart": "2024-12-31T08:00:00Z",
-  "pickupEnd": "2024-12-31T14:00:00Z",
+  "pickupStart": "2025-06-01T08:00:00Z",
+  "pickupEnd": "2025-06-01T14:00:00Z",
   "commerceId": 1,
   "categoryId": 1,
   "imageUrl": "https://ejemplo.com/imagen.jpg"
 }
 
 # ============================================
-# PATCH - ACTUALIZAR
+# PATCH - ACTUALIZAR PRODUCTO
 # ============================================
 
-# Actualizar producto (requiere autenticación)
+### Actualizar producto (requiere autenticación)
+### Solo el owner del comercio puede actualizar
 PATCH {{baseURL}}/products/{{productId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -77,13 +116,72 @@ Content-Type: application/json
 {
   "title": "Pan Integral Actualizado",
   "price": 4.00,
-  "quantity": 15
+  "quantity": 15,
+  "categoryId": 2
+}
+
+### Ejemplo: actualizar solo precio
+PATCH {{baseURL}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price": 2.50
 }
 
 # ============================================
-# DELETE - ELIMINAR
+# DELETE - ELIMINAR PRODUCTO
 # ============================================
 
-# Eliminar producto (soft delete, requiere autenticación)
+### Eliminar producto (soft delete)
+### Marca el producto como "sold_out" en lugar de borrar
+### Solo el owner del comercio puede eliminar
 DELETE {{baseURL}}/products/{{productId}}
 Authorization: Bearer {{token}}
+
+# ============================================
+# EJEMPLOS DE RESPUESTAS
+# ============================================
+
+# GET /products/all - Respuesta exitosa
+# [
+#   {
+#     "id": 1,
+#     "title": "Pan Integral",
+#     "description": "Pan integral fresco",
+#     "originalPrice": "5.00",
+#     "price": "3.50",
+#     "quantity": 20,
+#     "imageUrl": "https://...",
+#     "pickupStart": "2025-06-01T08:00:00.000Z",
+#     "pickupEnd": "2025-06-01T14:00:00.000Z",
+#     "status": "active",
+#     "category": { "id": 1, "name": "Panadería", "slug": "panaderia" },
+#     "commerce": { "id": 1, "name": "Mi Panadería" }
+#   }
+# ]
+
+# GET /products/commerce/1/stats - Respuesta exitosa
+# {
+#   "activeOffers": 5,
+#   "todayOffers": 2,
+#   "todayOrders": 3,
+#   "todaySales": 25.50,
+#   "totalUnitsSold": 8,
+#   "nearExpiryOffers": [
+#     { "id": 1, "title": "Croissants", "quantity": 5, "pickupEnd": "2025-06-01T12:00:00Z", "price": "3.00" }
+#   ],
+#   "nearExpiryCount": 1
+# }
+
+# POST /products - Posibles errores
+# 403: "No tienes permiso para añadir productos a este comercio"
+# 404: "Categoría no encontrada"
+
+# PATCH /products/:id - Posibles errores
+# 403: "No tienes permiso para editar este producto"
+# 404: "Producto no encontrado" | "Categoría no encontrada"
+
+# DELETE /products/:id - Posibles errores
+# 403: "No tienes permiso para eliminar este producto"
+# 404: "Producto no encontrado"
