@@ -137,4 +137,21 @@ class ProductRepository {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  Future<ProductModel> getProductById(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/products/$id'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return ProductModel.fromJson(json.decode(response.body));
+      } else {
+        throw Exception('Error al cargar producto: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }

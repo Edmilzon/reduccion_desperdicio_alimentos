@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
 
 class CommerceProductsScreen extends StatefulWidget {
   final CommerceModel commerce;
@@ -131,7 +132,15 @@ class _CommerceProductsScreenState extends State<CommerceProductsScreen> {
                             padding: const EdgeInsets.all(16),
                             itemCount: filtered.length,
                             itemBuilder: (context, index) {
-                              return _ProductItem(product: filtered[index]);
+                              return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProductDetailScreen(productId: filtered[index].id),
+                                ),
+                              ),
+                              child: _ProductItem(product: filtered[index]),
+                            );
                             },
                           ),
           ),
@@ -169,7 +178,7 @@ class _ProductItem extends StatelessWidget {
                 ? ClipRRect(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
                     child: Image.network(product.imageUrl, fit: BoxFit.cover, width: 100, height: 100,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+                      errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
                     ),
                   )
                 : const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),

@@ -4,6 +4,7 @@ import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
 import '../widgets/featured_product_card.dart';
 import '../widgets/product_card.dart';
+import 'product_detail_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -97,6 +98,12 @@ class _MenuScreenState extends State<MenuScreen> {
                           _expandedIndex = _expandedIndex == 0 ? null : 0;
                         });
                       },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProductDetailScreen(productId: _products.first.id),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -125,7 +132,15 @@ class _MenuScreenState extends State<MenuScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final product = _products[index + 1];
-                  return ProductCard(product: product);
+                  return ProductCard(
+                    product: product,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(productId: product.id),
+                      ),
+                    ),
+                  );
                 },
                 childCount: _products.length > 1 ? _products.length - 1 : 0,
               ),

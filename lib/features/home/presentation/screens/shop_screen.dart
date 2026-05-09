@@ -3,6 +3,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/commerce_products_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -153,14 +154,13 @@ class _ShopScreenState extends State<ShopScreen> {
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
-        final commerce = _commerces.firstWhere((c) => c.id == product.commerceId, orElse: () => CommerceModel(id: 0, name: 'Sin nombre'));
         return _ProductItem(
           product: product,
-          commerceName: commerce.name,
+          commerceName: product.commerceName ?? _commerces.firstWhere((c) => c.id == product.commerceId, orElse: () => CommerceModel(id: 0, name: 'Sin nombre')).name,
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CommerceProductsScreen(commerce: commerce),
+              builder: (_) => ProductDetailScreen(productId: product.id),
             ),
           ),
         );
