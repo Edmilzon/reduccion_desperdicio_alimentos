@@ -62,6 +62,7 @@ class ProductModel {
   final DateTime? updatedAt;
   final CategoryModel? category;
   final int? commerceId;
+  final String? commerceName;
 
   ProductModel({
     required this.id,
@@ -78,12 +79,15 @@ class ProductModel {
     this.updatedAt,
     this.category,
     this.commerceId,
+    this.commerceName,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     int? cid = json['commerceId'] ?? json['commerce_id'];
-    if (cid == null && json['commerce'] != null) {
-      cid = json['commerce']['id'];
+    String? cname;
+    if (json['commerce'] != null) {
+      cid ??= json['commerce']['id'];
+      cname = json['commerce']['name'];
     }
     return ProductModel(
       id: json['id'] ?? 0,
@@ -102,6 +106,7 @@ class ProductModel {
           ? CategoryModel.fromJson(json['category'])
           : CategoryModel(id: 0, name: '', slug: ''),
       commerceId: cid,
+      commerceName: cname,
     );
   }
 

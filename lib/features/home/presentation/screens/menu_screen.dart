@@ -27,7 +27,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _loadProducts() async {
     try {
-      final products = await _repository.getAllProducts();
+      final products = await _repository.getProductsWithFilters();
       setState(() {
         _products = products;
         _isLoading = false;

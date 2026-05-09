@@ -22,7 +22,7 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -42,7 +42,7 @@ class ProductCard extends StatelessWidget {
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: Colors.grey[200],
                         child: const Icon(Icons.image, color: Colors.grey),
                       ),
@@ -68,16 +68,54 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: product.isAvailable
+                            ? Colors.green.withValues(alpha: 0.85)
+                            : Colors.red.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        product.isAvailable ? 'Activo' : 'Agotado',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 3,
               child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (product.category != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          product.category!.name,
+                          style: const TextStyle(
+                            fontSize: 8,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 3),
                     Text(
                       product.title,
                       style: const TextStyle(
@@ -88,7 +126,19 @@ class ProductCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    if (product.commerceName != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        product.commerceName!,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const Spacer(),
                     Row(
                       children: [
                         Text(
@@ -109,14 +159,6 @@ class ProductCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${product.quantity} unidades',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: product.isAvailable ? Colors.green : Colors.red,
-                      ),
                     ),
                   ],
                 ),
