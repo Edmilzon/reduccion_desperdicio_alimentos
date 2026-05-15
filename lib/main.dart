@@ -47,9 +47,15 @@ class _MyAppState extends State<MyApp> {
 
     try {
       final user = await authRepo.fetchProfile();
+      if (user == null) throw Exception('No se pudo obtener perfil');
+      final isMerchant = user.isMerchant;
+      if (isMerchant) {
+        final commerceId = await authRepo.getCommerceId();
+        if (commerceId == null) throw Exception('Sin comercio');
+      }
       if (mounted) {
         setState(() {
-          _initialScreen = user?.isMerchant == true
+          _initialScreen = isMerchant
               ? const MainShell()
               : const ClientHomeScreen();
           _checkingAuth = false;

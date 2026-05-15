@@ -6,7 +6,9 @@ import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_label.dart
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 
 class CreateProductScreen extends StatefulWidget {
-  const CreateProductScreen({super.key});
+  final VoidCallback? onSuccess;
+
+  const CreateProductScreen({super.key, this.onSuccess});
 
   @override
   State<CreateProductScreen> createState() => _CreateProductScreenState();
@@ -169,7 +171,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Producto publicado exitosamente')),
         );
-        Navigator.pop(context, true);
+        onSuccess?.call();
       }
     } catch (e) {
       if (mounted) {
@@ -194,10 +196,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         title: const Text('Publicar Excedente'),
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

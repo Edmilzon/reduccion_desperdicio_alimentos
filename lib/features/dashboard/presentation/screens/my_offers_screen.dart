@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
-import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
   const MyOffersScreen({super.key});
@@ -18,7 +15,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _repo = DashboardRepository();
-  final _authRepo = AuthRepository();
   
   List<OfertaModel> _ofertas = [];
   bool _isLoading = true;
@@ -89,7 +85,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildAppBar(),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
@@ -125,77 +120,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                       ),
                     ],
                   ),
-      ),
-    );
-  }
-
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Mi Tienda',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-          ),
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.cardBg,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
-              onPressed: _showOptionsMenu,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-
-  void _showOptionsMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.shopping_bag_outlined),
-              title: const Text('Ver como Cliente'),
-              subtitle: const Text('Ver productos y comprar'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ShopScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                Navigator.pop(context);
-                await _authRepo.logout();
-                if (mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-          ],
-        ),
       ),
     );
   }

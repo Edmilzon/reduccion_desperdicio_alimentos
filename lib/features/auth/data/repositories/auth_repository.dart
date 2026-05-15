@@ -24,6 +24,10 @@ class AuthRepository {
       final data = jsonDecode(response.body);
       final authResponse = AuthResponse.fromJson(data);
       await _saveAuth(authResponse);
+      if (authResponse.commerce != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_commerceIdKey, authResponse.commerce!.id);
+      }
       await fetchProfile();
       return authResponse;
     } else {
@@ -89,6 +93,10 @@ class AuthRepository {
       final data = jsonDecode(response.body);
       final authResponse = AuthResponse.fromJson(data);
       await _saveAuth(authResponse);
+      if (authResponse.commerce != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_commerceIdKey, authResponse.commerce!.id);
+      }
       final user = await fetchProfile();
       if (user == null) {
         throw Exception('Error al obtener perfil');
