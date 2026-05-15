@@ -9,6 +9,7 @@ class AuthRepository {
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
   static const String _commerceIdKey = 'commerce_id';
+  static const String _commerceNameKey = 'commerce_name';
 
   Future<AuthResponse> login(String email, String password) async {
     final response = await http.post(
@@ -142,6 +143,10 @@ class AuthRepository {
         if (commerceId != null) {
           await prefs.setString(_commerceIdKey, commerceId);
         }
+        final commerceName = data['commerce']['name']?.toString();
+        if (commerceName != null) {
+          await prefs.setString(_commerceNameKey, commerceName);
+        }
       }
       return user;
     }
@@ -166,6 +171,7 @@ class AuthRepository {
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
     await prefs.remove(_commerceIdKey);
+    await prefs.remove(_commerceNameKey);
   }
 
   Future<bool> isLoggedIn() async {
@@ -178,8 +184,9 @@ class AuthRepository {
     await prefs.setString(_tokenKey, auth.accessToken);
     await prefs.setString(_userKey, jsonEncode(auth.user.toJson()));
     if (auth.commerce != null) {
-      await prefs.setString(_commerceIdKey, auth.commerce!.id);
-    }
+await prefs.setString(_commerceIdKey, auth.commerce!.id);
+        await prefs.setString(_commerceNameKey, auth.commerce!.name);
+      }
   }
 
   Future<String?> getCommerceId() async {
@@ -207,5 +214,6 @@ extension UserModelExtension on UserModel {
         'email': email,
         'name': name,
         'role': roleString,
+        if (isMerchant) 'isMerchant': true,
       };
 }

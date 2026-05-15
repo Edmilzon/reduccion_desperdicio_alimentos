@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/cloudinary_service.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_input.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_button.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_label.dart';
@@ -17,6 +20,7 @@ class CreateProductScreen extends StatefulWidget {
 class _CreateProductScreenState extends State<CreateProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _repo = DashboardRepository();
+  final _cloudinary = CloudinaryService();
 
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -33,6 +37,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   bool isLoading = false;
   bool _categoriasCargadas = false;
   int _commerceId = 0;
+  XFile? _selectedImage;
+  bool _isUploadingImage = false;
+  String? _uploadedImageUrl;
 
   @override
   void initState() {
@@ -56,8 +63,82 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _categoriasCargadas = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galería'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Cámara'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _cloudinary.pickImage(source);
+
+      if (image != null && mounted) {
+        setState(() {
+          _selectedImage = image;
+          _uploadedImageUrl = null;
+          _isUploadingImage = true;
+        });
+
+        final url = await _cloudinary.uploadImage(image);
+
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+            _uploadedImageUrl = url;
+          });
+
+          if (url != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Imagen subida exitosamente')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Error al subir imagen')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al subir imagen: $e')),
         );
       }
     }
@@ -68,10 +149,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     return null;
   }
 
-  String? validarPrecio(String? v) {
-    if (v == null || v.isEmpty) return 'El precio es obligatorio';
-    final p = double.tryParse(v);
-    if (p == null || p <= 0) return 'Precio inválido';
+  String? validarRelacionPrecios(String? v) {
+    if (v == null || v.isEmpty) return 'El precio oferta es obligatorio';
+    final precio = double.tryParse(v);
+    if (precio == null || precio <= 0) return 'Precio inválido';
+    final original = double.tryParse(originalPriceController.text);
+    if (original != null && precio >= original) {
+      return 'Precio oferta debe ser menor al original';
+    }
     return null;
   }
 
@@ -79,6 +164,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     if (v == null || v.isEmpty) return 'Las unidades son obligatorias';
     final q = int.tryParse(v);
     if (q == null || q <= 0) return 'Unidades inválidas';
+    return null;
+  }
+
+  String? validarPrecioOriginal(String? v) {
+    if (v == null || v.isEmpty) return 'El precio original es obligatorio';
+    final p = double.tryParse(v);
+    if (p == null || p <= 0) return 'Precio inválido';
     return null;
   }
 
@@ -148,12 +240,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       );
       return;
     }
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La imagen del producto es obligatoria')),
+      );
+      return;
+    }
 
     setState(() => isLoading = true);
 
     try {
       final pickupStartDT = _combineDateTime(_pickupStart!, _pickupStartTime!);
       final pickupEndDT = _combineDateTime(_pickupEnd!, _pickupEndTime!);
+
+      if (pickupEndDT.isBefore(pickupStartDT) || pickupEndDT.isAtSameMomentAs(pickupStartDT)) {
+        throw Exception('La fecha fin debe ser posterior al inicio de recogida');
+      }
+
+      String? imageUrl = _uploadedImageUrl;
+      if (imageUrl == null) {
+        imageUrl = await _cloudinary.uploadImage(_selectedImage!);
+      }
 
       await _repo.createProduct(
         title: titleController.text.trim(),
@@ -165,13 +272,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         pickupEnd: pickupEndDT,
         commerceId: _commerceId,
         categoryId: _categoriaSeleccionada!.id,
+        imageUrl: imageUrl,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Producto publicado exitosamente')),
         );
-        onSuccess?.call();
+        _resetForm();
+        widget.onSuccess?.call();
       }
     } catch (e) {
       if (mounted) {
@@ -182,6 +291,23 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  void _resetForm() {
+    titleController.clear();
+    descriptionController.clear();
+    priceController.clear();
+    originalPriceController.clear();
+    quantityController.clear();
+    setState(() {
+      _selectedImage = null;
+      _uploadedImageUrl = null;
+      _categoriaSeleccionada = null;
+      _pickupStart = null;
+      _pickupStartTime = null;
+      _pickupEnd = null;
+      _pickupEndTime = null;
+    });
   }
 
   String _formatDateTime(DateTime date, TimeOfDay time) {
@@ -197,7 +323,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: !_categoriasCargadas
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
@@ -246,13 +374,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: DropdownButton<CategoryModel>(
                     value: _categoriaSeleccionada,
                     isExpanded: true,
-                    hint: Text(_categoriasCargadas 
-                        ? 'Selecciona categoría' 
+                    hint: Text(_categoriasCargadas
+                        ? 'Selecciona categoría'
                         : 'Cargando...'),
                     items: _categorias.map((c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(c.name),
-                    )).toList(),
+                          value: c,
+                          child: Text(c.name),
+                        )).toList(),
                     onChanged: (v) => setState(() => _categoriaSeleccionada = v),
                   ),
                 ),
@@ -270,7 +398,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           controller: priceController,
                           hint: '0.00',
                           keyboardType: TextInputType.number,
-                          validator: validarPrecio,
+                          validator: validarRelacionPrecios,
                         ),
                       ],
                     ),
@@ -285,7 +413,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           controller: originalPriceController,
                           hint: '0.00',
                           keyboardType: TextInputType.number,
-                          validator: validarPrecio,
+                          validator: validarPrecioOriginal,
                         ),
                       ],
                     ),
@@ -300,6 +428,77 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 hint: '1',
                 keyboardType: TextInputType.number,
                 validator: validarQuantity,
+              ),
+              const SizedBox(height: 16),
+
+              CustomLabel('Imagen del producto'),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _isUploadingImage ? null : _showImageSourceOptions,
+                child: Container(
+                  width: double.infinity,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: _isUploadingImage
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: AppColors.primary),
+                              SizedBox(height: 8),
+                              Text(
+                                'Subiendo imagen...',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _selectedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.file(
+                                    File(_selectedImage!.path),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.image_not_supported,
+                                      color: AppColors.textSecondary,
+                                      size: 40,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _selectedImage = null),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 18,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _buildImagePlaceholder(),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -371,6 +570,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: const [
+        Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 40,
+          color: AppColors.textSecondary,
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Toca para añadir imagen',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 
