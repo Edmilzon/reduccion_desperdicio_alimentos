@@ -123,15 +123,8 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                           ],
                         ),
                       ),
-                      _buildResumenSemanal(),
                     ],
                   ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -258,66 +251,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     );
   }
 
-  Widget _buildResumenSemanal() {
-    final ahorro = _historial.fold<double>(0, (sum, o) => sum + (o.originalPrice - o.price));
-    final recuperado = _historial.fold<double>(0, (sum, o) => sum + o.price);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.summaryBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary.withAlpha(77)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Resumen Semanal',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.darkBrown,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(child: _resumenStat('${ahorro.toStringAsFixed(1)}kg', 'AHORRO ESTIMADO')),
-              Expanded(child: _resumenStat('${recuperado.toStringAsFixed(0)} Bs.', 'RECUPERADO')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _resumenStat(String value, String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.darkBrown,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppColors.secondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
-
   void _onEdit(OfertaModel oferta) {
     showDialog(
       context: context,
@@ -349,9 +282,9 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(e.toString())),
-                  );
-                }
-              }
+);
+  }
+}
             },
             child: const Text('Eliminar', style: TextStyle(color: AppColors.primary)),
           ),
