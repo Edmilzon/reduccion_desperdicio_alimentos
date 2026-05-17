@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_navbar.dar
 import 'menu_screen.dart';
 import 'shop_screen.dart';
 import 'profile_screen.dart';
+import '../../../map/presentation/map_screen.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -15,12 +16,12 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
 
-  final _screens = [
-    const MenuScreen(),
-    const ShopScreen(),
-    const _PlaceholderTab(label: 'Carrito'),
-    const _PlaceholderTab(label: 'Favoritos'),
-    const ProfileScreen(),
+  final _screens = const [
+    MenuScreen(),
+    ShopScreen(),
+    Center(child: Text('Carrito', style: TextStyle(fontSize: 24))),
+    MapScreen(),
+    ProfileScreen(),
   ];
 
   @override

@@ -5,7 +5,7 @@ import '../models/oferta_model.dart';
 
 class DashboardRepository {
   static const String baseUrl =
-      'https://reduccion-desperdicio-backend.vercel.app';
+      'http://192.168.0.14:5000';
   static const String _tokenKey = 'auth_token';
   static const String _commerceIdKey = 'commerce_id';
 
