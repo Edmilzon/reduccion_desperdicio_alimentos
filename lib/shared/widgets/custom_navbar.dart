@@ -35,8 +35,8 @@ class CustomNavbar extends StatelessWidget {
 		  label: 'Carrito',
 		),
 		BottomNavigationBarItem(
-		  icon: Icon(Icons.favorite),
-		  label: 'Favoritos',
+		  icon: Icon(Icons.map),
+		  label: 'Mapa',
 		),
 		BottomNavigationBarItem(
 		  icon: Icon(Icons.person),
