@@ -7,6 +7,9 @@ class MapCommerceModel {
   final double latitude;
   final double longitude;
   final double? distance;
+  final String? imageUrl;
+  final int availableOffers;
+  final String? pickupLimit;
 
   MapCommerceModel({
     required this.id,
@@ -14,6 +17,9 @@ class MapCommerceModel {
     required this.latitude,
     required this.longitude,
     this.distance,
+    this.imageUrl,
+    this.availableOffers = 0,
+    this.pickupLimit,
   });
 
   factory MapCommerceModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +32,10 @@ class MapCommerceModel {
       distance: json['distance'] != null
           ? double.tryParse(json['distance'].toString())
           : null,
+      imageUrl: json['imageUrl']?.toString(),
+      availableOffers:
+          int.tryParse(json['availableOffers']?.toString() ?? '0') ?? 0,
+      pickupLimit: json['pickupLimit']?.toString(),
     );
   }
 }
