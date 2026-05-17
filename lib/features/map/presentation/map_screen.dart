@@ -136,8 +136,8 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: _currentLocation ?? const LatLng(-16.5, -68.15), // Centro por defecto (ej. La Paz)
-              zoom: 13.0,
+              initialCenter: _currentLocation ?? const LatLng(-16.5, -68.15), // Centro por defecto (ej. La Paz)
+              initialZoom: 13.0,
               onTap: (tapPosition, point) {
                 // Al tocar el mapa, buscar por esa ubicación (Opcional según la HU)
                 _fetchNearbyCommerces(point);

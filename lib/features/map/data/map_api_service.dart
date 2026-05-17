@@ -32,7 +32,7 @@ class MapCommerceModel {
 
 class MapApiService {
   static const String baseUrl =
-      'https://reduccion-desperdicio-backend.vercel.app'; // URL Base consistente con auth_repository
+      'http://192.168.0.14:5000'; // URL Base consistente con auth_repository
 
   Future<List<MapCommerceModel>> getNearbyCommerces(
       double lat, double lng) async {

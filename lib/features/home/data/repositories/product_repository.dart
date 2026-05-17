@@ -4,7 +4,7 @@ import '../models/product_model.dart';
 
 class ProductRepository {
   static const String baseUrl =
-      'https://reduccion-desperdicio-backend.vercel.app';
+      'http://192.168.0.14:5000';
 
   Future<List<ProductModel>> getAllProducts() async {
     try {
