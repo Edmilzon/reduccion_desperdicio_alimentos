@@ -190,11 +190,11 @@ class _MyOffersScreenState extends State<MyOffersScreen>
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
               onTap: () async {
-                Navigator.pop(context);
+                final navigator = Navigator.of(context);
+                navigator.pop();
                 await _authRepo.logout();
                 if (mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
+                  navigator.pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                     (route) => false,
                   );

@@ -20,6 +20,7 @@ class _MainShellState extends State<MainShell> {
         context,
         MaterialPageRoute(builder: (_) => const CreateProductScreen()),
       ).then((created) {
+        if (!mounted) return;
         if (created == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Producto publicado')),

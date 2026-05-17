@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
-import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/rendimiento_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/stats_mini_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/ventas_card.dart';
 

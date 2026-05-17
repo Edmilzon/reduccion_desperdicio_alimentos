@@ -139,14 +139,15 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                 onPressed: () async {
                   if (!_formKey.currentState!.validate()) return;
 
+                  final navigator = Navigator.of(context);
                   setState(() => isLoading = true);
 
                   await Future.delayed(const Duration(seconds: 1));
 
                   setState(() => isLoading = false);
 
-                  Navigator.push(
-                    context,
+                  if (!mounted) return;
+                  navigator.push(
                     MaterialPageRoute(
                       builder: (_) => CommerceAccessScreen(
                         ownerName: ownerController.text,
