@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/routes/app_routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const LoginScreen(),
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }
