@@ -5,6 +5,7 @@ import 'package:reduccion_desperdicio_alimentos/features/home/data/models/produc
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/commerce_products_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/shell_wrapper.dart';
+import 'nearby_restaurants_screen.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -24,6 +25,7 @@ class _ShopScreenState extends State<ShopScreen> {
   String _searchQuery = '';
   String _sortBy = 'nombre';
   String _status = 'all';
+  int _selectedShopTab = 0;
 
   final _searchController = TextEditingController();
 
@@ -121,9 +123,13 @@ class _ShopScreenState extends State<ShopScreen> {
       ),
       body: Column(
         children: [
-          if (!showProducts) _buildFilters(),
+          _buildShopTabs(),
+          if (_selectedShopTab == 0 && !showProducts) _buildFilters(),
           Expanded(
-            child: _isLoading
+            child: _selectedShopTab == 1
+            ? const NearbyRestaurantsScreen()
+            
+            : _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : _error != null
                     ? _buildErrorView()
@@ -467,6 +473,51 @@ class _ShopScreenState extends State<ShopScreen> {
 
     return sorted;
   }
+
+  Widget _buildShopTabs() {
+  return Container(
+    color: Colors.white,
+    child: Row(
+      children: [
+        _buildShopTab('Catálogo', 0),
+        _buildShopTab('Cercanos', 1),
+      ],
+    ),
+  );
+ }
+
+ Widget _buildShopTab(String title, int index) {
+  final selected = _selectedShopTab == index;
+
+  return Expanded(
+    child: InkWell(
+      onTap: () {
+        setState(() {
+          _selectedShopTab = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? AppColors.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? AppColors.primary : AppColors.textSecondary,
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    ),
+  );
+ }
 }
 
 class _CommerceCard extends StatelessWidget {
