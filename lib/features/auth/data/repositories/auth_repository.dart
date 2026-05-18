@@ -70,10 +70,11 @@ class AuthRepository {
     required String email,
     required String password,
     required String commerceName,
+    required String phone,
+    String? nit,
     String? description,
     double? latitude,
     double? longitude,
-    String? nit,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/register-commerce'),
@@ -83,10 +84,11 @@ class AuthRepository {
         'email': email,
         'password': password,
         'commerceName': commerceName,
-        if (description != null) 'description': description,
+        'phone': phone,
+        if (nit != null) 'nit': nit,
+        if (description != null && description.isNotEmpty) 'description': description,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
-        if (nit != null) 'nit': nit,
       }),
     );
 

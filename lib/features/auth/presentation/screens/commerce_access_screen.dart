@@ -9,11 +9,17 @@ import '../../../../shared/widgets/main_shell.dart';
 class CommerceAccessScreen extends StatefulWidget {
   final String ownerName;
   final String commerceName;
+  final String phone;
+  final String nit;
+  final String description;
 
   const CommerceAccessScreen({
     super.key,
     required this.ownerName,
     required this.commerceName,
+    required this.phone,
+    required this.nit,
+    required this.description,
   });
 
   @override
@@ -54,6 +60,9 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
         email: emailController.text.trim().toLowerCase(),
         password: passwordController.text,
         commerceName: widget.commerceName,
+        phone: widget.phone,
+        nit: widget.nit.isNotEmpty ? widget.nit : null,
+        description: widget.description.isNotEmpty ? widget.description : null,
       );
 
       if (mounted) {

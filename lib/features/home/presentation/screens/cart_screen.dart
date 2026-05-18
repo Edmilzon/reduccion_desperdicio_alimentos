@@ -45,7 +45,7 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         title: const Text(
-          'Carrito',
+          'Categorías',
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

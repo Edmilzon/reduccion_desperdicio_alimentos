@@ -88,12 +88,11 @@ class _MyAppState extends State<MyApp> {
           scrolledUnderElevation: 0,
         ),
       ),
-      home: _checkingAuth
-          ? const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            )
-          : _initialScreen,
-      home: const LoginScreen(),
+home: _checkingAuth
+            ? const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              )
+            : _initialScreen ?? const LoginScreen(),
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

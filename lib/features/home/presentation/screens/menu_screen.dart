@@ -6,6 +6,7 @@ import '../../data/repositories/product_repository.dart';
 import '../widgets/featured_product_card.dart';
 import '../widgets/product_card.dart';
 import 'product_detail_screen.dart';
+import 'search_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -74,6 +75,31 @@ class _MenuScreenState extends State<MenuScreen> {
       onRefresh: _loadProducts,
       child: CustomScrollView(
         slivers: [
+          SliverAppBar(
+            backgroundColor: AppColors.background,
+            floating: true,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Eco Bocado',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+              ),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.search, color: AppColors.textPrimary),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SearchScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),

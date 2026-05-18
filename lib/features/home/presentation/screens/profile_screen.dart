@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
@@ -6,7 +5,6 @@ import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
-import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/my_offers_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isMerchant;

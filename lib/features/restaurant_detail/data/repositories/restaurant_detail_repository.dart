@@ -4,8 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/restaurant_detail_model.dart';
 
 class RestaurantDetailRepository {
-  static const String _baseUrl =
-      'https://reduccion-desperdicio-backend.vercel.app';
+  static const String _baseUrl = 'http://192.168.0.14:5000';
   static const String _tokenKey = 'auth_token';
 
   Future<String?> _getToken() async {

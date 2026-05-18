@@ -19,6 +19,7 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
   final ownerController = TextEditingController();
   final commerceController = TextEditingController();
   final phoneController = TextEditingController();
+  final nitController = TextEditingController();
   final descriptionController = TextEditingController();
 
   bool isLoading = false;
@@ -50,12 +51,10 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
     if (value == null || value.isEmpty) {
       return "El teléfono es obligatorio";
     }
-
     final regex = RegExp(r'^[0-9]{8,12}$');
     if (!regex.hasMatch(value)) {
       return "Debe tener entre 8 y 12 dígitos";
     }
-
     return null;
   }
 
@@ -124,6 +123,15 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
 
               const SizedBox(height: 15),
 
+              const CustomLabel("NIT (opcional)"),
+              CustomInput(
+                hint: "Ej: 123456789",
+                controller: nitController,
+                keyboardType: TextInputType.number,
+              ),
+
+              const SizedBox(height: 15),
+
               const CustomLabel("Descripción (opcional)"),
               CustomInput(
                 hint: "Ej: Comida rápida, delivery...",
@@ -142,7 +150,7 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                   final navigator = Navigator.of(context);
                   setState(() => isLoading = true);
 
-                  await Future.delayed(const Duration(seconds: 1));
+                  await Future.delayed(const Duration(milliseconds: 500));
 
                   setState(() => isLoading = false);
 
@@ -150,8 +158,11 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                   navigator.push(
                     MaterialPageRoute(
                       builder: (_) => CommerceAccessScreen(
-                        ownerName: ownerController.text,
-                        commerceName: commerceController.text,
+                        ownerName: ownerController.text.trim(),
+                        commerceName: commerceController.text.trim(),
+                        phone: phoneController.text.trim(),
+                        nit: nitController.text.trim(),
+                        description: descriptionController.text.trim(),
                       ),
                     ),
                   );

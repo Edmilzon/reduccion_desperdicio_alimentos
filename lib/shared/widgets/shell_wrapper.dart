@@ -19,7 +19,10 @@ class ShellWrapper extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           title,
           style: const TextStyle(
@@ -34,9 +37,7 @@ class ShellWrapper extends StatelessWidget {
       bottomNavigationBar: CustomNavbar(
         currentIndex: 0,
         onTap: (index) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          }
+          Navigator.popUntil(context, (route) => route.isFirst);
         },
       ),
     );

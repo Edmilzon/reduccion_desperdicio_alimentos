@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/data/map_api_service.dart';
 import '../widgets/nearby_restaurant_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/presentation/map_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/presentation/screens/restaurant_detail_screen.dart';
 
 class NearbyRestaurantsScreen extends StatefulWidget {
   const NearbyRestaurantsScreen({super.key});
@@ -181,14 +182,14 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
               return NearbyRestaurantCard(
                 commerce: _commerces[index],
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Abrir detalle de ${_commerces[index].name}',
-                      ),
-                    ), 
+                  final id = int.tryParse(_commerces[index].id) ?? 0;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RestaurantDetailScreen(commerceId: id),
+                    ),
                   );
-                }, 
+                },
               );
             },
           ),

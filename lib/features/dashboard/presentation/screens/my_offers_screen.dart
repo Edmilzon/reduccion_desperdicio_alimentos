@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/create_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
   const MyOffersScreen({super.key});
@@ -15,6 +19,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _repo = DashboardRepository();
+  final _authRepo = AuthRepository();
   
   List<OfertaModel> _ofertas = [];
   bool _isLoading = true;
@@ -122,7 +127,14 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                   ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateProductScreen()),
+          ).then((created) {
+            if (created == true) cargarOfertas();
+          });
+        },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
@@ -245,22 +257,8 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         itemCount: lista.length,
         itemBuilder: (_, i) => OfferCard(
           oferta: lista[i],
-          onEdit: () => _onEdit(lista[i]),
           onDelete: () => _onDelete(lista[i]),
         ),
-      ),
-    );
-  }
-
-  void _onEdit(OfertaModel oferta) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Editar oferta'),
-        content: Text('Editar: ${oferta.nombre}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('cerrar')),
-        ],
       ),
     );
   }
