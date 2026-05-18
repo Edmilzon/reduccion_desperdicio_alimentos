@@ -3,6 +3,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/my_offers_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/create_product_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -15,32 +16,27 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   void _onItemTapped(int index) {
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-      ).then((created) {
-        if (created == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Producto publicado')),
-          );
-        }
-      });
-    } else {
-      setState(() {
-        _currentIndex = index;
-      });
-    }
+    setState(() {
+      _currentIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _currentIndex == 0 
+      body: _currentIndex == 0
           ? const MyOffersScreen()
-          : const DashboardScreen(),
+          : _currentIndex == 1
+              ? CreateProductScreen(onSuccess: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Producto publicado')),
+                  );
+                })
+              : _currentIndex == 2
+                  ? const DashboardScreen()
+                  : const ProfileScreen(isMerchant: true),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex == 2 ? 1 : _currentIndex,
+        currentIndex: _currentIndex,
         onTap: _onItemTapped,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
@@ -64,6 +60,11 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.bar_chart_outlined),
             activeIcon: Icon(Icons.bar_chart),
             label: 'Estadística',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Perfil',
           ),
         ],
       ),

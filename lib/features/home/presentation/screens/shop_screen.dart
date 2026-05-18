@@ -47,17 +47,21 @@ class _ShopScreenState extends State<ShopScreen> {
         categoryId: _selectedCategoryId,
       );
       final commerces = await _repository.getCommerces();
-      setState(() {
-        _categories = categories;
-        _filteredProducts = products;
-        _commerces = commerces;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+          _filteredProducts = products;
+          _commerces = commerces;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -77,23 +81,26 @@ class _ShopScreenState extends State<ShopScreen> {
     try {
       final results = await _repository.searchProducts(query);
       final allCommerces = await _repository.getCommerces();
-      setState(() {
-        _filteredProducts = results;
-        _commerces = allCommerces;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _filteredProducts = results;
+          _commerces = allCommerces;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _onFilterCategory(int? categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
-      _isLoading = true;
     });
     _loadData();
   }
