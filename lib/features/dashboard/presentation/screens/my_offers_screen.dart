@@ -121,6 +121,83 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                     ],
                   ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Mi Tienda',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.cardBg,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
+              onPressed: _showOptionsMenu,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.shopping_bag_outlined),
+              title: const Text('Ver como Cliente'),
+              subtitle: const Text('Ver productos y comprar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ShopScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                await _authRepo.logout();
+                if (mounted) {
+                  navigator.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

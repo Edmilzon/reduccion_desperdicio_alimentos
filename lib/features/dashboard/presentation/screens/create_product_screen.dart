@@ -182,6 +182,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       lastDate: DateTime.now().add(const Duration(days: 7)),
     );
     if (date != null) {
+      if (!mounted) return;
       final time = await showTimePicker(
         context: context,
         initialTime: _pickupStartTime ?? const TimeOfDay(hour: 10, minute: 0),
@@ -203,6 +204,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       lastDate: DateTime.now().add(const Duration(days: 7)),
     );
     if (date != null) {
+      if (!mounted) return;
       final time = await showTimePicker(
         context: context,
         initialTime: _pickupEndTime ?? const TimeOfDay(hour: 20, minute: 0),

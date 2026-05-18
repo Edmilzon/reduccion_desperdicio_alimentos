@@ -54,6 +54,12 @@
         <intent>
             <action android:name="android.intent.action.GET_CONTENT"/>
             <data android:mimeType="image/*"/>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
         </intent>
     </queries>
 </manifest>

@@ -19,6 +19,23 @@ class _MainShellState extends State<MainShell> {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CreateProductScreen()),
+      ).then((created) {
+        if (!mounted) return;
+        if (created == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Producto publicado')),
+          );
+        }
+      });
+    } else {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
   }
 
   @override
