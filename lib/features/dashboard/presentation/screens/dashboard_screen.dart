@@ -15,6 +15,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _repo = DashboardRepository();
   List<OfertaModel> _ofertas = [];
+  Map<String, dynamic>? _stats;
   bool _isLoading = true;
   String? _error;
 
@@ -31,19 +32,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
+      final commerceId = await _repo.getCommerceIdInt();
+      final stats = await _repo.getDashboardStats(commerceId.toString());
       final ofertas = await _repo.getMisOfertas();
       if (mounted) {
         setState(() {
+          _stats = stats;
           _ofertas = ofertas;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _error = e.toString();
-        });
+      try {
+        final ofertas = await _repo.getMisOfertas();
+        if (mounted) {
+          setState(() {
+            _ofertas = ofertas;
+            _isLoading = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _error = e.toString();
+          });
+        }
       }
     }
   }
@@ -51,9 +65,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final ofertaAlerta = _ofertas.where((o) => o.isExpiringSoon).firstOrNull;
-    final ventasTotal = _ofertas.fold<double>(0, (sum, o) => sum + o.price);
-    final productosActivos = _ofertas.where((o) => o.isActive).length;
-    final productosVendidos = _ofertas.where((o) => o.isSold).length;
+    
+    double ventasTotal = 0;
+    int productosActivos = 0;
+    int productosVendidos = 0;
+    
+    if (_stats != null) {
+      ventasTotal = (_stats!['totalRevenue'] ?? _stats!['ventasTotales'] ?? 0).toDouble();
+      productosActivos = _stats!['activeProducts'] ?? _stats!['productosActivos'] ?? 0;
+      productosVendidos = _stats!['soldProducts'] ?? _stats!['productosVendidos'] ?? 0;
+    } else {
+      ventasTotal = _ofertas.fold<double>(0, (sum, o) => sum + o.price);
+      productosActivos = _ofertas.where((o) => o.isActive).length;
+      productosVendidos = _ofertas.where((o) => o.isSold).length;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,

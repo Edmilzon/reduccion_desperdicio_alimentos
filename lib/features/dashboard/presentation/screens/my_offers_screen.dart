@@ -5,6 +5,7 @@ import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/scree
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/create_product_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/edit_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
 
@@ -142,37 +143,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     );
   }
 
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Mi Tienda',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-          ),
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.cardBg,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
-              onPressed: _showOptionsMenu,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-
   void _showOptionsMenu() {
     showModalBottomSheet(
       context: context,
@@ -257,13 +227,14 @@ class _MyOffersScreenState extends State<MyOffersScreen>
         itemCount: lista.length,
         itemBuilder: (_, i) => OfferCard(
           oferta: lista[i],
+          onEdit: () => _onEdit(lista[i]),
           onDelete: () => _onDelete(lista[i]),
         ),
       ),
     );
   }
 
-  void _onDelete(OfertaModel oferta) {
+void _onDelete(OfertaModel oferta) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -281,13 +252,25 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(e.toString())),
-);
-  }
-}
+                  );
+                }
+              }
             },
             child: const Text('Eliminar', style: TextStyle(color: AppColors.primary)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _onEdit(OfertaModel oferta) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProductScreen(
+          oferta: oferta,
+          onSuccess: cargarOfertas,
+        ),
       ),
     );
   }

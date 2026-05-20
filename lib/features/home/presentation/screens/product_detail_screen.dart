@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 
@@ -14,9 +15,11 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final ProductRepository _repository = ProductRepository();
+  final CartRepository _cartRepo = CartRepository();
   ProductModel? _product;
   bool _isLoading = true;
   String? _error;
+  int _quantity = 1;
 
   @override
   void initState() {
@@ -198,14 +201,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: isAvailable ? () {} : null,
-                    child: Text(
-                      isAvailable ? 'Agregar al Carrito' : 'Producto Agotado',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    onPressed: isAvailable ? () => _addToCart(p) : null,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          isAvailable ? 'Agregar al Carrito' : 'Producto Agotado',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -433,5 +443,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final month = dt.month.toString().padLeft(2, '0');
     final year = dt.year;
     return '$day/$month/$year';
+  }
+
+  Future<void> _addToCart(ProductModel p) async {
+    final cartItem = CartItem(
+      productId: p.id,
+      title: p.title,
+      price: p.price,
+      imageUrl: p.imageUrl,
+      quantity: _quantity,
+      commerceId: p.commerceId,
+      commerceName: p.commerceName,
+    );
+    await _cartRepo.addItem(cartItem);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$_quantity ${_quantity == 1 ? "unidad" : "unidades"} añadida${_quantity == 1 ? "" : "s"} al carrito'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Ver Carrito',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+      );
+    }
   }
 }

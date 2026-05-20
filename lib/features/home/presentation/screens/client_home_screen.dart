@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/menu_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/cart_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/real_cart_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/profile_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/nearby_restaurants_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_navbar.dart';
@@ -16,14 +17,36 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
+  final CartRepository _cartRepo = CartRepository();
+  int _cartCount = 0;
 
   final _screens = [
     const MenuScreen(),
     const ShopScreen(),
-    const CartScreen(),
+    const RealCartScreen(),
     const NearbyRestaurantsScreen(),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCartCount();
+  }
+
+  Future<void> _updateCartCount() async {
+    final count = await _cartRepo.getItemCount();
+    if (mounted) {
+      setState(() => _cartCount = count);
+    }
+  }
+
+  void _onTabChanged(int index) {
+    setState(() => _currentIndex = index);
+    if (index == 2) {
+      _updateCartCount();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +71,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ),
       bottomNavigationBar: CustomNavbar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _onTabChanged,
+        cartCount: _cartCount,
       ),
     );
   }

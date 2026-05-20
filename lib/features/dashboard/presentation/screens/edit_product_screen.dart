@@ -7,18 +7,24 @@ import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_input.dart
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_button.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_label.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart' hide CategoryModel;
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 
-class CreateProductScreen extends StatefulWidget {
+class EditProductScreen extends StatefulWidget {
+  final OfertaModel oferta;
   final VoidCallback? onSuccess;
 
-  const CreateProductScreen({super.key, this.onSuccess});
+  const EditProductScreen({
+    super.key,
+    required this.oferta,
+    this.onSuccess,
+  });
 
   @override
-  State<CreateProductScreen> createState() => _CreateProductScreenState();
+  State<EditProductScreen> createState() => _EditProductScreenState();
 }
 
-class _CreateProductScreenState extends State<CreateProductScreen> {
+class _EditProductScreenState extends State<EditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _repo = DashboardRepository();
   final _cloudinary = CloudinaryService();
@@ -41,6 +47,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   XFile? _selectedImage;
   bool _isUploadingImage = false;
   String? _uploadedImageUrl;
+  String? _existingImageUrl;
 
   @override
   void initState() {
@@ -48,9 +55,25 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     _cargarDatos();
   }
 
+  void _precargarDatos() {
+    final o = widget.oferta;
+    titleController.text = o.title;
+    descriptionController.text = o.description;
+    priceController.text = o.price.toString();
+    originalPriceController.text = o.originalPrice.toString();
+    quantityController.text = o.quantity.toString();
+    _existingImageUrl = o.imageUrl;
+
+    _pickupStart = o.pickupStart;
+    _pickupStartTime = TimeOfDay.fromDateTime(o.pickupStart);
+    _pickupEnd = o.pickupEnd;
+    _pickupEndTime = TimeOfDay.fromDateTime(o.pickupEnd);
+  }
+
   Future<void> _cargarDatos() async {
     _commerceId = await _repo.getCommerceIdInt();
     await _cargarCategorias();
+    _precargarDatos();
   }
 
   Future<void> _cargarCategorias() async {
@@ -60,6 +83,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         setState(() {
           _categorias = cats;
           _categoriasCargadas = true;
+          final catName = widget.oferta.categoryName;
+          if (catName != null) {
+            _categoriaSeleccionada = _categorias.firstWhere(
+              (c) => c.name == catName,
+              orElse: () => _categorias.first,
+            );
+          }
         });
       }
     } catch (e) {
@@ -67,9 +97,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         setState(() {
           _categoriasCargadas = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
       }
     }
   }
@@ -106,41 +133,23 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _cloudinary.pickImage(source);
-
       if (image != null && mounted) {
         setState(() {
           _selectedImage = image;
           _uploadedImageUrl = null;
           _isUploadingImage = true;
         });
-
         final url = await _cloudinary.uploadImage(image);
-
         if (mounted) {
           setState(() {
             _isUploadingImage = false;
             _uploadedImageUrl = url;
           });
-
-          if (url != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Imagen subida exitosamente')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Error al subir imagen')),
-            );
-          }
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isUploadingImage = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir imagen: $e')),
-        );
+        setState(() => _isUploadingImage = false);
       }
     }
   }
@@ -182,8 +191,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 7)),
     );
-    if (date != null) {
-      if (!mounted) return;
+    if (date != null && mounted) {
       final time = await showTimePicker(
         context: context,
         initialTime: _pickupStartTime ?? const TimeOfDay(hour: 10, minute: 0),
@@ -204,8 +212,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       firstDate: _pickupStart ?? DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 7)),
     );
-    if (date != null) {
-      if (!mounted) return;
+    if (date != null && mounted) {
       final time = await showTimePicker(
         context: context,
         initialTime: _pickupEndTime ?? const TimeOfDay(hour: 20, minute: 0),
@@ -243,12 +250,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       );
       return;
     }
-    if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La imagen del producto es obligatoria')),
-      );
-      return;
-    }
 
     setState(() => isLoading = true);
 
@@ -256,34 +257,35 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       final pickupStartDT = _combineDateTime(_pickupStart!, _pickupStartTime!);
       final pickupEndDT = _combineDateTime(_pickupEnd!, _pickupEndTime!);
 
-      if (pickupEndDT.isBefore(pickupStartDT) || pickupEndDT.isAtSameMomentAs(pickupStartDT)) {
-        throw Exception('La fecha fin debe ser posterior al inicio de recogida');
+      if (pickupEndDT.isBefore(pickupStartDT)) {
+        throw Exception('La fecha fin debe ser posterior al inicio');
       }
 
-      String? imageUrl = _uploadedImageUrl;
-      if (imageUrl == null) {
+      String? imageUrl = _existingImageUrl;
+      if (_uploadedImageUrl != null) {
+        imageUrl = _uploadedImageUrl;
+      } else if (_selectedImage != null) {
         imageUrl = await _cloudinary.uploadImage(_selectedImage!);
       }
 
-      await _repo.createProduct(
-        title: titleController.text.trim(),
-        description: descriptionController.text.trim(),
-        originalPrice: double.parse(originalPriceController.text),
-        price: double.parse(priceController.text),
-        quantity: int.parse(quantityController.text),
-        pickupStart: pickupStartDT,
-        pickupEnd: pickupEndDT,
-        commerceId: _commerceId,
-        categoryId: _categoriaSeleccionada!.id,
-        imageUrl: imageUrl,
-      );
+      await _repo.updateProduct(widget.oferta.id, {
+        'title': titleController.text.trim(),
+        'description': descriptionController.text.trim(),
+        'originalPrice': double.parse(originalPriceController.text),
+        'price': double.parse(priceController.text),
+        'quantity': int.parse(quantityController.text),
+        'pickupStart': pickupStartDT.toUtc().toIso8601String(),
+        'pickupEnd': pickupEndDT.toUtc().toIso8601String(),
+        'categoryId': _categoriaSeleccionada!.id,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Producto publicado exitosamente')),
+          const SnackBar(content: Text('Producto actualizado exitosamente')),
         );
-        _resetForm();
         widget.onSuccess?.call();
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -296,23 +298,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
-  void _resetForm() {
-    titleController.clear();
-    descriptionController.clear();
-    priceController.clear();
-    originalPriceController.clear();
-    quantityController.clear();
-    setState(() {
-      _selectedImage = null;
-      _uploadedImageUrl = null;
-      _categoriaSeleccionada = null;
-      _pickupStart = null;
-      _pickupStartTime = null;
-      _pickupEnd = null;
-      _pickupEndTime = null;
-    });
-  }
-
   String _formatDateTime(DateTime date, TimeOfDay time) {
     return '${date.day}/${date.month} a las ${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
@@ -322,7 +307,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Publicar Excedente'),
+        title: const Text('Editar Producto'),
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
@@ -336,7 +321,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Describe tu producto',
+                'Editar producto',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -345,7 +330,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Completa los datos del excedente que deseas vender.',
+                'Modifica los datos de tu producto.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 24),
@@ -377,13 +362,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: DropdownButton<CategoryModel>(
                     value: _categoriaSeleccionada,
                     isExpanded: true,
-                    hint: Text(_categoriasCargadas
-                        ? 'Selecciona categoría'
-                        : 'Cargando...'),
+                    hint: const Text('Selecciona categoría'),
                     items: _categorias.map((c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c.name),
-                        )).toList(),
+                      value: c,
+                      child: Text(c.name),
+                    )).toList(),
                     onChanged: (v) => setState(() => _categoriaSeleccionada = v),
                   ),
                 ),
@@ -447,60 +430,48 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: _isUploadingImage
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: AppColors.primary),
-                              SizedBox(height: 8),
-                              Text(
-                                'Subiendo imagen...',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
+                      ? const Center(child: CircularProgressIndicator())
                       : _selectedImage != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  Image.file(
-                                    File(_selectedImage!.path),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.image_not_supported,
-                                      color: AppColors.textSecondary,
-                                      size: 40,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _selectedImage = null),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.close,
-                                          size: 18,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              child: Image.file(
+                                File(_selectedImage!.path),
+                                fit: BoxFit.cover,
                               ),
                             )
-                          : _buildImagePlaceholder(),
+                          : _existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.network(
+                                        _existingImageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                                      ),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: GestureDetector(
+                                          onTap: () => setState(() {
+                                            _selectedImage = null;
+                                            _existingImageUrl = null;
+                                          }),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.close, size: 18, color: AppColors.primary),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _buildImagePlaceholder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -523,9 +494,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             ? _formatDateTime(_pickupStart!, _pickupStartTime!)
                             : 'Selecciona fecha y hora',
                         style: TextStyle(
-                          color: _pickupStart != null
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
+                          color: _pickupStart != null ? AppColors.textPrimary : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -552,9 +521,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             ? _formatDateTime(_pickupEnd!, _pickupEndTime!)
                             : 'Selecciona fecha y hora',
                         style: TextStyle(
-                          color: _pickupEnd != null
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
+                          color: _pickupEnd != null ? AppColors.textPrimary : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -564,7 +531,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               const SizedBox(height: 32),
 
               CustomButton(
-                text: isLoading ? 'Publicando...' : 'PUBLICAR PRODUCTO',
+                text: isLoading ? 'Actualizando...' : 'ACTUALIZAR PRODUCTO',
                 isLoading: isLoading,
                 onPressed: isLoading ? null : _handleSubmit,
               ),
@@ -577,22 +544,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Widget _buildImagePlaceholder() {
-    return Column(
+    return const Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        Icon(
-          Icons.add_photo_alternate_outlined,
-          size: 40,
-          color: AppColors.textSecondary,
-        ),
+      children: [
+        Icon(Icons.add_photo_alternate_outlined, size: 40, color: AppColors.textSecondary),
         SizedBox(height: 8),
-        Text(
-          'Toca para añadir imagen',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
+        Text('Toca para cambiar imagen', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
       ],
     );
   }

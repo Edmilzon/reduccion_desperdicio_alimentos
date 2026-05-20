@@ -12,6 +12,8 @@ class CommerceAccessScreen extends StatefulWidget {
   final String phone;
   final String nit;
   final String description;
+  final double? latitude;
+  final double? longitude;
 
   const CommerceAccessScreen({
     super.key,
@@ -20,6 +22,8 @@ class CommerceAccessScreen extends StatefulWidget {
     required this.phone,
     required this.nit,
     required this.description,
+    this.latitude,
+    this.longitude,
   });
 
   @override
@@ -63,6 +67,8 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
         phone: widget.phone,
         nit: widget.nit.isNotEmpty ? widget.nit : null,
         description: widget.description.isNotEmpty ? widget.description : null,
+        latitude: widget.latitude,
+        longitude: widget.longitude,
       );
 
       if (mounted) {

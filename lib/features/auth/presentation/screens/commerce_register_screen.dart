@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/location_service.dart';
 import 'commerce_access_screen.dart';
 import 'login_screen.dart';
 import '../../../../shared/widgets/custom_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_label.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class CommerceRegisterScreen extends StatefulWidget {
   const CommerceRegisterScreen({super.key});
@@ -15,6 +17,7 @@ class CommerceRegisterScreen extends StatefulWidget {
 
 class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _locationService = LocationService();
 
   final ownerController = TextEditingController();
   final commerceController = TextEditingController();
@@ -23,6 +26,9 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
   final descriptionController = TextEditingController();
 
   bool isLoading = false;
+  bool _isGettingLocation = false;
+  double? _latitude;
+  double? _longitude;
 
   String? requiredField(String? value, String message) {
     if (value == null || value.trim().isEmpty) {
@@ -56,6 +62,30 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
       return "Debe tener entre 8 y 12 dígitos";
     }
     return null;
+  }
+
+  Future<void> _getLocation() async {
+    setState(() => _isGettingLocation = true);
+    try {
+      final position = await _locationService.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          _isGettingLocation = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ubicación obtenida correctamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGettingLocation = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al obtener ubicación: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
@@ -139,6 +169,36 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                 maxLines: 3,
               ),
 
+              const SizedBox(height: 15),
+
+              const CustomLabel("Ubicación (opcional)"),
+              const Text(
+                "Agrega la ubicación de tu restaurante para que los clientes te encuentren fácilmente",
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _isGettingLocation ? null : _getLocation,
+                icon: _isGettingLocation
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(_latitude != null ? Icons.check_circle : Icons.location_on),
+                label: Text(_latitude != null
+                    ? "Ubicación obtenida"
+                    : _isGettingLocation
+                        ? "Obteniendo..."
+                        : "Obtener ubicación actual"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _latitude != null ? Colors.green : AppColors.primary,
+                  side: BorderSide(
+                    color: _latitude != null ? Colors.green : AppColors.primary,
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 30),
 
               CustomButton(
@@ -163,6 +223,8 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                         phone: phoneController.text.trim(),
                         nit: nitController.text.trim(),
                         description: descriptionController.text.trim(),
+                        latitude: _latitude,
+                        longitude: _longitude,
                       ),
                     ),
                   );

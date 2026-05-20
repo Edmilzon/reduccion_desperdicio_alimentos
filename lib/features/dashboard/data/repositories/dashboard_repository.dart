@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/oferta_model.dart';
+import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dart';
+import '../models/oferta_model.dart' hide CategoryModel;
+import '../../../home/data/models/product_model.dart';
 
 class DashboardRepository {
-  static const String baseUrl =
-      'http://192.168.0.14:5000';
+  static const String baseUrl = ApiConstants.baseUrl;
   static const String _tokenKey = 'auth_token';
   static const String _commerceIdKey = 'commerce_id';
 
@@ -214,28 +215,5 @@ class DashboardRepository {
     if (response.statusCode != 200) {
       throw Exception('Error al eliminar producto');
     }
-  }
-}
-
-class CategoryModel {
-  final int id;
-  final String name;
-  final String slug;
-  final String? imageUrl;
-
-  CategoryModel({
-    required this.id,
-    required this.name,
-    required this.slug,
-    this.imageUrl,
-  });
-
-  factory CategoryModel.fromJson(Map<String, dynamic> json) {
-    return CategoryModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      imageUrl: json['imageUrl'],
-    );
   }
 }

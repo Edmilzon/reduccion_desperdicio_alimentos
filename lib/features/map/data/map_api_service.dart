@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dart';
 
 class MapCommerceModel {
   final String id;
@@ -41,8 +42,7 @@ class MapCommerceModel {
 }
 
 class MapApiService {
-  static const String baseUrl =
-      'http://192.168.0.14:5000'; // URL Base consistente con auth_repository
+  static const String baseUrl = ApiConstants.baseUrl;
 
   Future<List<MapCommerceModel>> getNearbyCommerces(
       double lat, double lng) async {

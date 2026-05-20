@@ -4,11 +4,13 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 class CustomNavbar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final int cartCount;
 
   const CustomNavbar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.cartCount = 0,
   });
 
   @override
@@ -22,24 +24,30 @@ class CustomNavbar extends StatelessWidget {
       unselectedItemColor: AppColors.textSecondary,
       selectedFontSize: 12,
       unselectedFontSize: 12,
-      items: const [
-        BottomNavigationBarItem(
+      items: [
+        const BottomNavigationBarItem(
           icon: Icon(Icons.restaurant_menu),
           label: 'Menú',
         ),
-        BottomNavigationBarItem(
+        const BottomNavigationBarItem(
           icon: Icon(Icons.storefront),
           label: 'Tienda',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart),
+          icon: cartCount > 0
+              ? Badge(
+                  label: Text('$cartCount'),
+                  backgroundColor: AppColors.primary,
+                  child: const Icon(Icons.shopping_cart),
+                )
+              : const Icon(Icons.shopping_cart),
           label: 'Carrito',
         ),
-        BottomNavigationBarItem(
+        const BottomNavigationBarItem(
           icon: Icon(Icons.map),
           label: 'Mapa',
         ),
-        BottomNavigationBarItem(
+        const BottomNavigationBarItem(
           icon: Icon(Icons.person),
           label: 'Perfil',
         ),

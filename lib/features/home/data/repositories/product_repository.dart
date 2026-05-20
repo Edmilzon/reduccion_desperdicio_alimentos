@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dart';
 import '../models/product_model.dart';
 
 class ProductRepository {
-  static const String baseUrl =
-      'http://192.168.0.14:5000';
+  static const String baseUrl = ApiConstants.baseUrl;
 
   Future<List<ProductModel>> getAllProducts() async {
     try {
