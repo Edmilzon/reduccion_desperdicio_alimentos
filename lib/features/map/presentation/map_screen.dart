@@ -125,6 +125,107 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  void _showCommerceBottomSheet(MapCommerceModel commerce) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final bool isInactive = !commerce.hasActiveOffers;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          commerce.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        if (commerce.branchName != null && commerce.branchName!.isNotEmpty)
+                          Text(
+                            commerce.branchName!,
+                            style: TextStyle(color: Colors.green[700], fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (commerce.distance != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${commerce.distance!.toStringAsFixed(1)} km',
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (commerce.description != null)
+                Text(
+                  commerce.description!,
+                  style: TextStyle(color: Colors.grey[600]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 18, color: isInactive ? Colors.grey : Colors.orange),
+                  const SizedBox(width: 8),
+                  Text(
+                    isInactive 
+                      ? 'Sin ofertas activas en esta sede' 
+                      : 'Recogida hasta: ${commerce.pickupLimit ?? "Sin definir"}',
+                    style: TextStyle(
+                      color: isInactive ? Colors.grey : Colors.black87,
+                      fontWeight: isInactive ? FontWeight.normal : FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isInactive ? null : () {
+                    Navigator.pushNamed(
+                      context, 
+                      '/restaurant-detail', 
+                      arguments: {'id': commerce.id},
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.green,
+                    disabledBackgroundColor: Colors.grey[300],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    isInactive ? 'CERRADO (SIN STOCK)' : 'VER OFERTAS DISPONIBLES',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
