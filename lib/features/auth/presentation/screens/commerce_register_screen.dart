@@ -210,8 +210,6 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                   final navigator = Navigator.of(context);
                   setState(() => isLoading = true);
 
-                  await Future.delayed(const Duration(milliseconds: 500));
-
                   setState(() => isLoading = false);
 
                   if (!mounted) return;
@@ -220,7 +218,6 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
                       builder: (_) => CommerceAccessScreen(
                         ownerName: ownerController.text.trim(),
                         commerceName: commerceController.text.trim(),
-                        phone: phoneController.text.trim(),
                         nit: nitController.text.trim(),
                         description: descriptionController.text.trim(),
                         latitude: _latitude,

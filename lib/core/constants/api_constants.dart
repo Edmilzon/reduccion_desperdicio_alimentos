@@ -1,3 +1,3 @@
 class ApiConstants {
-  static const String baseUrl = 'https://reduccion-desperdicio-backend.vercel.app/';
+  static const String baseUrl = 'https://reduccion-desperdicio-backend.vercel.app';
 }

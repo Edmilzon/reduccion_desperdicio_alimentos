@@ -4,13 +4,14 @@ import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
-import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/create_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/edit_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
-  const MyOffersScreen({super.key});
+  final void Function(VoidCallback)? onRefreshRegistered;
+
+  const MyOffersScreen({super.key, this.onRefreshRegistered});
 
   @override
   State<MyOffersScreen> createState() => _MyOffersScreenState();
@@ -21,7 +22,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
   late TabController _tabController;
   final _repo = DashboardRepository();
   final _authRepo = AuthRepository();
-  
+
   List<OfertaModel> _ofertas = [];
   bool _isLoading = true;
   String? _error;
@@ -31,6 +32,14 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() => setState(() {}));
+    cargarOfertas();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onRefreshRegistered?.call(_refreshOffers);
+    });
+  }
+
+  void _refreshOffers() {
     cargarOfertas();
   }
 
@@ -126,20 +135,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                       ),
                     ],
                   ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-          ).then((created) {
-            if (created == true) cargarOfertas();
-          });
-        },
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+                ),
     );
   }
 
