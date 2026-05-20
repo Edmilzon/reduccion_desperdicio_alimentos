@@ -85,5 +85,5 @@ Ventajas de este Enfoque
 
     Trabajo en Equipo: Permite que varios desarrolladores trabajen en diferentes funcionalidades simultáneamente sin generar conflictos de fusión (merge conflicts) constantes.
 
-    Release v1.0.1 
-    4 hus ccompletos primer sprint
+    Release v1.0.2
+    7 hus completos segundo sprint  sprint
