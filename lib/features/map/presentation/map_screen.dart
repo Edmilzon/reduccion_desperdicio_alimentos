@@ -244,6 +244,12 @@ class _MapScreenState extends State<MapScreen> {
                 _fetchNearbyCommerces(point);
                 _mapController.move(point, 15.0);
               },
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture) {
+                  // Si el usuario movió el mapa manualmente, recargar
+                  _fetchNearbyCommerces(position.center);
+                }
+              },
             ),
             children: [
               TileLayer(
