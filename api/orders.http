@@ -2,7 +2,6 @@
 # ORDERS - Pedidos
 # ============================================
 # Gestión de pedidos de productos.
-# Para documentación completa ver api/api.http
 #
 # Base URL: http://localhost:3000
 
@@ -19,19 +18,23 @@
 #              El usuario debe estar logueado.
 # Body (JSON):
 #   {
-#     "productId": "uuid-del-producto",  // OBLIGATORIO - ID del producto
-#     "quantity": 2                // OBLIGATORIO - Cantidad (mínimo 1)
+#     "productId": 1,        // OBLIGATORIO - ID del producto (number)
+#     "quantity": 2,         // OBLIGATORIO - Cantidad (mínimo 1)
+#     "paymentMethod": "online" // OPCIONAL - "cash" | "online" (default: cash)
 #   }
 # Headers:
 #   Authorization: Bearer <token>
 # Respuesta exitosa (201):
 #   {
-#     "id": "uuid-generated",
-#     "userId": "uuid-del-usuario",
-#     "productId": "uuid-del-producto",
+#     "id": 1,
+#     "buyer": { "id": 1 },
+#     "product": { "id": 1 },
 #     "quantity": 2,
 #     "totalPrice": 7.00,
-#     "status": "pending",
+#     "status": "confirmed",
+#     "paymentMethod": "cash",
+#     "paymentStatus": "pending",
+#     "deliveryStatus": "pending",
 #     "createdAt": "..."
 #   }
 # Errores comunes:
@@ -47,8 +50,9 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "productId": "uuid-del-producto",
-  "quantity": 2
+  "productId": 1,
+  "quantity": 2,
+  "paymentMethod": "cash"
 }
 
 # ============================================
@@ -61,11 +65,11 @@ Content-Type: application/json
 # Respuesta exitosa (200):
 #   [
 #     {
-#       "id": "uuid-1",
-#       "productId": "...",
+#       "id": 1,
+#       "product": { "id": 1, "title": "...", "commerce": { "id": 1, "name": "..." } },
 #       "quantity": 2,
 #       "totalPrice": 7.00,
-#       "status": "pending",
+#       "status": "confirmed",
 #       "createdAt": "..."
 #     }
 #   ]
@@ -83,14 +87,14 @@ Authorization: Bearer {{token}}
 # Autenticación: REQUERIDA - Bearer token.
 #              Solo el creador del pedido puede cancelarlo.
 # Params:
-#   :id - UUID del pedido (reemplaza {{orderId}})
+#   :id - ID numérico del pedido (reemplaza {{orderId}})
 # Respuesta exitosa (200):
 #   { "message": "Orden cancelada", "status": "cancelled" }
-# Estados posibles: pending, confirmed, cancelled, completed
+# Estados posibles: confirmed, cancelled
 # Errores comunes:
 #   - 401 Unauthorized: Sin token
-#   - 403 Forbidden: No eres el propietario
-#   - 400: La orden no puede cancelarse (ya stata completada)
+#   - 404 Not Found: La orden no existe o no te pertenece
+#   - 400: La orden ya fue cancelada
 
 ###
 # Cancelar orden (requiere autenticación)

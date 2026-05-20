@@ -197,15 +197,28 @@ await prefs.setString(_commerceIdKey, auth.commerce!.id);
   }
 
   Exception _parseError(http.Response response) {
-    final data = jsonDecode(response.body);
-    final message = data['message'] ?? 'Error desconocido';
-    switch (response.statusCode) {
-      case 401:
-        return Exception('Credenciales inválidas');
-      case 409:
-        return Exception(message);
-      default:
-        return Exception(message);
+    try {
+      final data = jsonDecode(response.body);
+      final message = data['message'] ?? 'Error desconocido';
+      switch (response.statusCode) {
+        case 301:
+        case 308:
+          return Exception('URL del backend incorrecta (redirect). Revisa api_constants.dart');
+        case 401:
+          return Exception('Credenciales inválidas');
+        case 404:
+          return Exception('Endpoint no encontrado. ¿Falta /api/ en la URL?');
+        case 409:
+          return Exception(message);
+        case 500:
+        case 502:
+        case 503:
+          return Exception('Error del servidor. Intenta más tarde.');
+        default:
+          return Exception(message);
+      }
+    } catch (_) {
+      return Exception('Error de conexión (${response.statusCode})');
     }
   }
 }
