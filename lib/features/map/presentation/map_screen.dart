@@ -151,41 +151,75 @@ class _MapScreenState extends State<MapScreen> {
               ),
               MarkerLayer(
                 markers: _commerces.map((commerce) {
+                  final bool isInactive = !commerce.hasActiveOffers;
                   return Marker(
                     point: LatLng(commerce.latitude, commerce.longitude),
                     width: 150,
-                    height: 80,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: const [BoxShadow(blurRadius: 3, color: Colors.black26)]
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                commerce.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (commerce.distance != null)
-                                Text(
-                                  '${commerce.distance!.toStringAsFixed(1)} km',
-                                  style: const TextStyle(color: Colors.green, fontSize: 10),
+                    height: 90,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Aquí se implementará el bottom sheet en la siguiente tarea
+                        _showCommerceBottomSheet(commerce);
+                      },
+                      child: Opacity(
+                        opacity: isInactive ? 0.6 : 1.0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isInactive ? Colors.grey[200] : Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isInactive ? Colors.grey : Colors.green,
+                                  width: 1,
                                 ),
-                            ],
-                          ),
+                                boxShadow: const [
+                                  BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2))
+                                ]
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    commerce.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold, 
+                                      fontSize: 11,
+                                      color: isInactive ? Colors.grey[700] : Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (commerce.branchName != null && commerce.branchName!.isNotEmpty)
+                                    Text(
+                                      commerce.branchName!,
+                                      style: TextStyle(
+                                        fontSize: 9, 
+                                        color: isInactive ? Colors.grey : Colors.green[700],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  if (commerce.distance != null)
+                                    Text(
+                                      '${commerce.distance!.toStringAsFixed(1)} km',
+                                      style: TextStyle(
+                                        color: isInactive ? Colors.grey : Colors.green, 
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.location_on,
+                              color: isInactive ? Colors.grey : Colors.red,
+                              size: 32,
+                            ),
+                          ],
                         ),
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.red,
-                          size: 30,
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 }).toList(),
