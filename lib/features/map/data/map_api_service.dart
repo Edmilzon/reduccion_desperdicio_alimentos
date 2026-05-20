@@ -14,6 +14,7 @@ class MapCommerceModel {
   final int availableOffers;
   final bool hasActiveOffers;
   final String? pickupLimit;
+  final String? description;
 
   MapCommerceModel({
     required this.id,
@@ -27,6 +28,7 @@ class MapCommerceModel {
     this.availableOffers = 0,
     this.hasActiveOffers = false,
     this.pickupLimit,
+    this.description,
   });
 
   factory MapCommerceModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class MapCommerceModel {
           int.tryParse(json['availableOffers']?.toString() ?? '0') ?? 0,
       hasActiveOffers: json['hasActiveOffers'] ?? false,
       pickupLimit: json['pickupLimit']?.toString(),
+      description: json['description']?.toString(),
     );
   }
 }
