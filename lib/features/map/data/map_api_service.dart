@@ -4,29 +4,37 @@ import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dar
 
 class MapCommerceModel {
   final String id;
+  final String? restaurantId;
   final String name;
+  final String? branchName;
   final double latitude;
   final double longitude;
   final double? distance;
   final String? imageUrl;
   final int availableOffers;
+  final bool hasActiveOffers;
   final String? pickupLimit;
 
   MapCommerceModel({
     required this.id,
+    this.restaurantId,
     required this.name,
+    this.branchName,
     required this.latitude,
     required this.longitude,
     this.distance,
     this.imageUrl,
     this.availableOffers = 0,
+    this.hasActiveOffers = false,
     this.pickupLimit,
   });
 
   factory MapCommerceModel.fromJson(Map<String, dynamic> json) {
     return MapCommerceModel(
       id: json['id']?.toString() ?? '',
+      restaurantId: json['restaurantId']?.toString(),
       name: json['name'] ?? '',
+      branchName: json['branchName'] ?? '',
       // Algunos parseos defensivos para asegurar que sean double
       latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
@@ -36,6 +44,7 @@ class MapCommerceModel {
       imageUrl: json['imageUrl']?.toString(),
       availableOffers:
           int.tryParse(json['availableOffers']?.toString() ?? '0') ?? 0,
+      hasActiveOffers: json['hasActiveOffers'] ?? false,
       pickupLimit: json['pickupLimit']?.toString(),
     );
   }
