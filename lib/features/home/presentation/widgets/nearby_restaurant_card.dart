@@ -21,7 +21,7 @@ class NearbyRestaurantCard extends StatelessWidget {
     final bool isInactive = !commerce.hasActiveOffers;
 
     return InkWell(
-      onTap: isInactive ? null : onTap,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(

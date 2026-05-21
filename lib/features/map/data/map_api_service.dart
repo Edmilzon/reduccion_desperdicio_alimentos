@@ -56,29 +56,53 @@ class MapCommerceModel {
 class MapApiService {
   static const String baseUrl = ApiConstants.baseUrl;
 
+  static List<MapCommerceModel>? _cachedCommerces;
+  static double? _cachedLat;
+  static double? _cachedLng;
+
+  static List<MapCommerceModel>? get cachedCommerces => _cachedCommerces;
+
+  /// [radiusKm] 0 = todos los locales, ordenados por distancia (más cercano primero).
   Future<List<MapCommerceModel>> getNearbyCommerces(
-      double lat, double lng) async {
-    final uri = Uri.parse('$baseUrl/commerces/nearby?lat=$lat&lng=$lng');
-    final response = await http.get(uri);
+    double lat,
+    double lng, {
+    double radiusKm = 0,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/commerces/nearby?lat=$lat&lng=$lng&radius=$radiusKm',
+    );
+    final response = await http
+        .get(uri)
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => MapCommerceModel.fromJson(json)).toList();
+      final list = data.map((json) => MapCommerceModel.fromJson(json)).toList();
+      _cachedCommerces = list;
+      _cachedLat = lat;
+      _cachedLng = lng;
+      return list;
     } else {
-      throw Exception('Error al obtener comercios cercanos');
+      throw Exception(
+        'Error al obtener comercios cercanos (${response.statusCode})',
+      );
     }
   }
 
   Future<List<MapCommerceModel>> getCommercesByAddress(String address) async {
     final uri = Uri.parse(
         '$baseUrl/commerces/by-address?address=${Uri.encodeComponent(address)}');
-    final response = await http.get(uri);
+    final response = await http
+        .get(uri)
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => MapCommerceModel.fromJson(json)).toList();
     } else {
-      throw Exception('Error al obtener comercios por dirección');
+      throw Exception(
+        'Error al obtener comercios por dirección (${response.statusCode})',
+      );
     }
   }
 }

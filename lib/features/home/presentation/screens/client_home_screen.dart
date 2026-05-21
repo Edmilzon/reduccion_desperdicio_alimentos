@@ -20,13 +20,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   final CartRepository _cartRepo = CartRepository();
   int _cartCount = 0;
 
-  final _screens = [
-    const MenuScreen(),
-    const ShopScreen(),
-    const RealCartScreen(),
-    const NearbyRestaurantsScreen(),
-    const ProfileScreen(),
-  ];
 
   @override
   void initState() {
@@ -67,7 +60,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: [
+          const MenuScreen(),
+          const ShopScreen(),
+          const RealCartScreen(),
+          if (_currentIndex == 3)
+            const NearbyRestaurantsScreen(
+              key: ValueKey('map-tab-nearby'),
+              isTabActive: true,
+            )
+          else
+            const SizedBox.shrink(),
+          const ProfileScreen(),
+        ],
       ),
       bottomNavigationBar: CustomNavbar(
         currentIndex: _currentIndex,

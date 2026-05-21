@@ -18,6 +18,8 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<MapCommerceModel> _commerces = [];
+  LatLng _mapCenter = const LatLng(-17.423, -66.119);
+  double _mapZoom = 13.0;
   LatLng? _currentLocation;
   bool _isLoading = false;
   String? _errorMessage;
@@ -27,6 +29,20 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initLocation();
+  }
+
+  void _safeMapMove(LatLng center, double zoom) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _mapController.move(center, zoom);
+      } catch (_) {
+        setState(() {
+          _mapCenter = center;
+          _mapZoom = zoom;
+        });
+      }
+    });
   }
 
   Future<void> _initLocation() async {
@@ -42,16 +58,19 @@ class _MapScreenState extends State<MapScreen> {
       
       setState(() {
         _currentLocation = currentLatLng;
+        _mapCenter = currentLatLng;
+        _mapZoom = 15.0;
       });
-      
-      _mapController.move(currentLatLng, 15.0);
+
+      _safeMapMove(currentLatLng, 15.0);
       await _fetchNearbyCommerces(currentLatLng);
     } catch (e) {
       setState(() {
         _permissionDenied = true;
         _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
-      _showErrorDialog(_errorMessage!);
+      await _fetchNearbyCommerces(_mapCenter);
+      if (mounted) _showErrorDialog(_errorMessage!);
     } finally {
       setState(() {
         _isLoading = false;
@@ -92,9 +111,13 @@ class _MapScreenState extends State<MapScreen> {
       });
       
       if (results.isNotEmpty) {
-        // Mover el mapa al primer resultado
         final first = results.first;
-        _mapController.move(LatLng(first.latitude, first.longitude), 14.0);
+        final center = LatLng(first.latitude, first.longitude);
+        setState(() {
+          _mapCenter = center;
+          _mapZoom = 14.0;
+        });
+        _safeMapMove(center, 14.0);
       } else {
         setState(() {
           _errorMessage = 'No se encontraron restaurantes cerca de esa dirección.';
@@ -200,11 +223,16 @@ class _MapScreenState extends State<MapScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: isInactive ? null : () {
+                  onPressed: () {
+                    final restaurantId = int.tryParse(
+                          commerce.restaurantId ?? commerce.id,
+                        ) ??
+                        0;
+                    if (restaurantId <= 0) return;
                     Navigator.pushNamed(
-                      context, 
-                      '/restaurant-detail', 
-                      arguments: {'id': commerce.id},
+                      context,
+                      '/restaurant-detail',
+                      arguments: {'commerceId': restaurantId},
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -214,7 +242,9 @@ class _MapScreenState extends State<MapScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: Text(
-                    isInactive ? 'CERRADO (SIN STOCK)' : 'VER OFERTAS DISPONIBLES',
+                    isInactive
+                        ? 'VER LOCAL (SIN OFERTAS ACTIVAS)'
+                        : 'VER OFERTAS DISPONIBLES',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -235,14 +265,14 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           FlutterMap(
+            key: ValueKey('${_mapCenter.latitude},${_mapCenter.longitude},$_mapZoom'),
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _currentLocation ?? const LatLng(-16.5, -68.15), // Centro por defecto (ej. La Paz)
-              initialZoom: 13.0,
+              initialCenter: _mapCenter,
+              initialZoom: _mapZoom,
               onTap: (tapPosition, point) {
-                // Al tocar el mapa, buscar por esa ubicación (Opcional según la HU)
                 _fetchNearbyCommerces(point);
-                _mapController.move(point, 15.0);
+                _safeMapMove(point, 15.0);
               },
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
