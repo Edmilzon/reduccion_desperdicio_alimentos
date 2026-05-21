@@ -2,13 +2,36 @@
 # COMMERCES - Comercios
 # ============================================
 # Gestión de comercios.
-# Para documentación completa ver api/api.http
 #
 # Base URL: http://localhost:3000
 
 @baseURL = https://reduccion-desperdicio-backend.vercel.app/
 @token = your_jwt_token_here
 @commerceId = 1
+
+# ============================================
+# GET - CONSULTAS PÚBLICAS
+# ============================================
+
+### Listar todos los comercios (con owner)
+GET {{baseURL}}/commerces
+
+### Listar solo IDs y nombres (lightweight)
+GET {{baseURL}}/commerces/list/all
+
+### Buscar comercios cercanos por coordenadas
+### radius: opcional (default: 3km)
+GET {{baseURL}}/commerces/nearby?lat=-16.5&lng=-68.15&radius=5
+
+### Buscar comercios cercanos por dirección (usa Nominatim)
+### radius: opcional (default: 3km)
+GET {{baseURL}}/commerces/by-address?address=La Paz, Bolivia&radius=5
+
+### Obtener comercio por ID
+GET {{baseURL}}/commerces/{{commerceId}}
+
+### Obtener productos activos de un comercio
+GET {{baseURL}}/commerces/{{commerceId}}/products
 
 # ============================================
 # POST /commerces
@@ -19,7 +42,11 @@
 #   {
 #     "name": "Mi Tienda",         // OBLIGATORIO
 #     "description": "Descripción",  // OPCIONAL
-#     "nit": "12345678"         // OPCIONAL - NIT del comercio
+#     "latitude": -16.5,           // OPCIONAL
+#     "longitude": -68.15,         // OPCIONAL
+#     "rating": 4.5,              // OPCIONAL
+#     "imageUrl": "https://...",  // OPCIONAL
+#     "nit": "12345678"           // OPCIONAL - NIT del comercio
 #   }
 # Headers:
 #   Authorization: Bearer <token>
@@ -32,37 +59,10 @@ Content-Type: application/json
 {
   "name": "Nueva Tienda",
   "description": "Descripción de la tienda",
+  "latitude": -16.5,
+  "longitude": -68.15,
   "nit": "12345678"
 }
-
-# ============================================
-# GET /commerces
-# ----------------------------------
-# Descripción: Lista todos los comercios.
-# Autenticación: No requerida.
-
-###
-GET {{baseURL}}/commerces
-
-# ============================================
-# GET /commerces/:id
-# ----------------------------------
-# Descripción: Obtiene un comercio por ID.
-# Autenticación: No requerida.
-# Params: ID numérico del comercio
-
-###
-GET {{baseURL}}/commerces/{{commerceId}}
-
-# ============================================
-# GET /commerces/:id/products
-# ----------------------------------
-# Descripción: Obtiene los productos de un comercio.
-# Autenticación: No requerida.
-# Params: ID numérico del comercio
-
-###
-GET {{baseURL}}/commerces/{{commerceId}}/products
 
 # ============================================
 # PATCH /commerces/:id
@@ -90,3 +90,10 @@ Content-Type: application/json
 ###
 DELETE {{baseURL}}/commerces/{{commerceId}}
 Authorization: Bearer {{token}}
+
+# ============================================
+# RESTAURANTS - Detalle de restaurante
+# ============================================
+
+### Obtener detalle completo con ofertas activas
+GET {{baseURL}}/restaurants/{{commerceId}}/detail

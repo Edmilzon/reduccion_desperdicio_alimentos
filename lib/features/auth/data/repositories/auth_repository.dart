@@ -12,14 +12,29 @@ class AuthRepository {
   static const String _commerceNameKey = 'commerce_name';
 
   Future<AuthResponse> login(String email, String password) async {
+    final url = '$baseUrl/auth/login';
+    // TODO: Remove debug logs after fixing 308 error
+    assert(() {
+      // ignore: avoid_print
+      print('DEBUG LOGIN URL: $url');
+      return true;
+    }());
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
+      Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': email,
         'password': password,
       }),
     );
+    // TODO: Remove debug logs after fixing 308 error
+    assert(() {
+      // ignore: avoid_print
+      print('DEBUG LOGIN RESPONSE status: ${response.statusCode}');
+      print('DEBUG LOGIN RESPONSE headers: ${response.headers}');
+      print('DEBUG LOGIN RESPONSE body: ${response.body}');
+      return true;
+    }());
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -70,7 +85,6 @@ class AuthRepository {
     required String email,
     required String password,
     required String commerceName,
-    required String phone,
     String? nit,
     String? description,
     double? latitude,
@@ -84,8 +98,7 @@ class AuthRepository {
         'email': email,
         'password': password,
         'commerceName': commerceName,
-        'phone': phone,
-        if (nit != null) 'nit': nit,
+        if (nit != null && nit.isNotEmpty) 'nit': nit,
         if (description != null && description.isNotEmpty) 'description': description,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
@@ -197,15 +210,28 @@ await prefs.setString(_commerceIdKey, auth.commerce!.id);
   }
 
   Exception _parseError(http.Response response) {
-    final data = jsonDecode(response.body);
-    final message = data['message'] ?? 'Error desconocido';
-    switch (response.statusCode) {
-      case 401:
-        return Exception('Credenciales inválidas');
-      case 409:
-        return Exception(message);
-      default:
-        return Exception(message);
+    try {
+      final data = jsonDecode(response.body);
+      final message = data['message'] ?? 'Error desconocido';
+      switch (response.statusCode) {
+        case 301:
+        case 308:
+          return Exception('URL del backend incorrecta (redirect). Revisa api_constants.dart');
+        case 401:
+          return Exception('Credenciales inválidas');
+        case 404:
+          return Exception('Endpoint no encontrado. ¿Falta /api/ en la URL?');
+        case 409:
+          return Exception(message);
+        case 500:
+        case 502:
+        case 503:
+          return Exception('Error del servidor. Intenta más tarde.');
+        default:
+          return Exception(message);
+      }
+    } catch (_) {
+      return Exception('Error de conexión (${response.statusCode})');
     }
   }
 }

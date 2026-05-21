@@ -36,7 +36,6 @@ class AppRoutes {
           builder: (_) => CommerceAccessScreen(
             ownerName: args?['ownerName']?.toString() ?? '',
             commerceName: args?['commerceName']?.toString() ?? '',
-            phone: args?['phone']?.toString() ?? '',
             nit: args?['nit']?.toString() ?? '',
             description: args?['description']?.toString() ?? '',
           ),

@@ -150,10 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppColors.background,
       elevation: 0,
       floating: true,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-        onPressed: () {},
-      ),
+      leading: const SizedBox.shrink(),
       title: const Text(
         'Panel',
         style: TextStyle(
@@ -163,16 +160,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       centerTitle: true,
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.cardBg,
-            child: const Icon(Icons.person_outline, color: AppColors.textSecondary, size: 20),
-          ),
-        ),
-      ],
     );
   }
 

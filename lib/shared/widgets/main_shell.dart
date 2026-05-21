@@ -14,41 +14,37 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  VoidCallback? _refreshCallback;
 
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;
     });
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-      ).then((created) {
-        if (!mounted) return;
-        if (created == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Producto publicado')),
-          );
-        }
-      });
-    } else {
-      setState(() {
-        _currentIndex = index;
-      });
-    }
+  }
+
+  void _onProductPublished() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Producto publicado')),
+    );
+    setState(() {
+      _currentIndex = 0;
+    });
+    _refreshCallback?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _currentIndex == 0
-          ? const MyOffersScreen()
+          ? MyOffersScreen(
+              onRefreshRegistered: (callback) {
+                _refreshCallback = callback;
+              },
+            )
           : _currentIndex == 1
-              ? CreateProductScreen(onSuccess: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Producto publicado')),
-                  );
-                })
+              ? CreateProductScreen(
+                  onSuccess: _onProductPublished,
+                )
               : _currentIndex == 2
                   ? const DashboardScreen()
                   : const ProfileScreen(isMerchant: true),

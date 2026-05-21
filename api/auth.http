@@ -1,18 +1,68 @@
 # ============================================
-# FLUJO COMPLETO - Registro de Comerciante
+# AUTH - Autenticación (Eco Bocado)
 # ============================================
-# Este documento describe el flujo para registrar un comerciante,
-# crear su comercio, y gestionar productos.
+# Endpoints de autenticación y registro.
+#
+# Roles disponibles: client (default), merchant, admin
+# Autenticación: JWT Bearer token en header Authorization
+#
+# Base URL: http://localhost:3000
 
 @baseURL = https://reduccion-desperdicio-backend.vercel.app/
+@token = your_jwt_token_here
 
 # ============================================
-# Paso 1: Registrar comerciante con comercio
+# POST /auth/register
+# ----------------------------------
+# Descripción: Registra un nuevo usuario (rol CLIENT por defecto).
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "name": "Juan Pérez",      // OBLIGATORIO - Nombre completo
+#     "email": "user@mail.com",  // OBLIGATORIO - Email único
+#     "password": "123456",      // OBLIGATORIO - Mínimo 6 caracteres
+#     "role": "client"           // OPCIONAL - "client" | "merchant" | "admin" (default: client)
+#   }
+# Respuesta (201):
+#   {
+#     "user": { "id": 1, "email": "user@mail.com", "role": "client", "name": "Juan Pérez" },
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
+#   }
+
+###
+POST {{baseURL}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Juan Pérez",
+  "email": "cliente@example.com",
+  "password": "123456"
+}
+
 # ============================================
 # POST /auth/register-commerce
-# Registra un usuario con rol MERCHANT y crea su comercio asociado.
-# El usuario queda logueado automáticamente.
+# ----------------------------------
+# Descripción: Registra un comerciante (rol MERCHANT) y crea su comercio.
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "ownerName": "Juan Perez",     // OBLIGATORIO
+#     "email": "tienda@mail.com",    // OBLIGATORIO
+#     "password": "password123",     // OBLIGATORIO - Mínimo 6 caracteres
+#     "commerceName": "Mi Tienda",   // OBLIGATORIO
+#     "description": "Descripción",  // OPCIONAL
+#     "latitude": -16.5,            // OPCIONAL
+#     "longitude": -68.15,          // OPCIONAL
+#     "nit": "123456789"            // OPCIONAL
+#   }
+# Respuesta (201):
+#   {
+#     "user": { "id": 1, "email": "tienda@mail.com", "role": "merchant", "name": "Juan Perez" },
+#     "commerce": { "id": 1, "name": "Mi Tienda" },
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
+#   }
 
+###
 POST {{baseURL}}/auth/register-commerce
 Content-Type: application/json
 
@@ -22,88 +72,68 @@ Content-Type: application/json
   "password": "password123",
   "commerceName": "Panadería Don Juan",
   "description": "Panadería fresca",
+  "latitude": -16.5,
+  "longitude": -68.15,
   "nit": "123456789"
 }
 
-# Respuesta:
-# {
-#   "user": { "id": 1, "email": "tienda@example.com", "role": "MERCHANT", ... },
-#   "commerce": { "id": 1, "name": "Panadería Don Juan" },
-#   "access_token": "eyJhbGciOiJIUzI1NiIs..."
-# }
-
-# GUARDA EL access_token PARA LOS SIGUIENTES PASOS
-
 # ============================================
-# Paso 2: Ver perfil del usuario
+# POST /auth/login
+# ----------------------------------
+# Descripción: Inicia sesión. Si el usuario es MERCHANT, incluye datos del comercio.
+# Autenticación: No requerida.
+# Body (JSON):
+#   {
+#     "email": "user@mail.com",    // OBLIGATORIO
+#     "password": "123456"         // OBLIGATORIO
+#   }
+# Respuesta (200):
+#   {
+#     "user": { "id": 1, "email": "user@mail.com", "name": "Juan Pérez", "role": "client" },
+#     "access_token": "eyJhbGciOiJIUzI1NiIs..."
+#     // Si role = merchant, incluye:
+#     // "commerce": { "id": 1, "name": "Mi Tienda" }
+#   }
+# Error:
+#   401 - Credenciales inválidas
+
+###
+POST {{baseURL}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "cliente@example.com",
+  "password": "123456"
+}
+
 # ============================================
 # GET /auth/me
-# Verifica que el usuario está logueado y obtiene su información.
+# ----------------------------------
+# Descripción: Obtiene el perfil del usuario autenticado.
+#              Si es MERCHANT, incluye datos del comercio asociado.
+# Autenticación: REQUERIDA - Bearer token.
+# Respuesta (200):
+#   {
+#     "user": { "id": 1, "email": "user@mail.com", "name": "Juan Pérez", "role": "client" }
+#     // Si role = merchant, incluye:
+#     // "commerce": { "id": 1, "name": "Mi Tienda" }
+#   }
 
-@token = eyJhbGciOiJIUzI1NiIs...
-
+###
 GET {{baseURL}}/auth/me
 Authorization: Bearer {{token}}
 
 # ============================================
-# Paso 3: Ver tu comercio
-# ============================================
-# GET /commerces/:id
-# Ver los datos del comercio creado.
-# Reemplaza :id con el commerceIddevuelto o el id del usuario.
+# POST /auth/logout
+# ----------------------------------
+# Descripción: Cierra sesión. El JWT es stateless, solo indica al cliente
+#              que debe eliminar el token localmente.
+# Autenticación: REQUERIDA - Bearer token.
+# Respuesta (200):
+#   {
+#     "message": "Sesión cerrada exitosamente. Asegúrese de eliminar el token en el cliente."
+#   }
 
-@commerceId = 1
-
-GET {{baseURL}}/commerces/{{commerceId}}
+###
+POST {{baseURL}}/auth/logout
 Authorization: Bearer {{token}}
-
-# ============================================
-# Paso 4: Ver productos de tu comercio
-# ============================================
-# GET /commerces/:id/products
-# Lista todos los productos activos del comercio.
-
-GET {{baseURL}}/commerces/{{commerceId}}/products
-Authorization: Bearer {{token}}
-
-# ============================================
-# Paso 5: Crear un nuevo producto
-# ============================================
-# POST /products
-# Crea un producto en tu comercio.
-# Solo el owner del comercio puede crear productos.
-
-POST {{baseURL}}/products
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "title": "PanIntegral",
-  "description": "Pan integral fresco",
-  "originalPrice": 5.00,
-  "price": 3.50,
-  "quantity": 20,
-  "pickupStart": "2026-05-06T08:00:00Z",
-  "pickupEnd": "2026-05-06T14:00:00Z",
-  "commerceId": 1,
-  "categoryId": 1
-}
-
-# ============================================
-# Resumen de endpoints útiles
-# ============================================
-# Autenticación:
-#   POST /auth/register-commerce - Crear comerciante + comercio → devuelve { user, commerce, access_token }
-#   POST /auth/login               - Iniciar sesión
-#   GET  /auth/me                 - Ver perfil actual
-#
-# Comercios:
-#   GET /commerces              - Listar todos
-#   GET /commerces/:id          - Ver comercio específico
-#   GET /commerces/:id/products - Ver productos del comercio
-#
-# Productos:
-#   GET /products                         - Productos activos (filtros)
-#   GET /products/commerce/:commerceId  - Productos de un comercio
-#   GET /products/commerce/:commerceId/stats - Estadísticas del día
-#   POST /products                       - Crear producto (auth requerido)
