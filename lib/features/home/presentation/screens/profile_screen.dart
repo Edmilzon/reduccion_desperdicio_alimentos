@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/merchant_pending_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 
@@ -183,6 +184,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
               ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                icon: Icons.receipt_long,
+                title: 'Pedidos pendientes',
+                subtitle: 'Ver reservas con pago en sucursal',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MerchantPendingOrdersScreen(),
+                    ),
+                  );
+               },
+             ),
             ] else ...[
               _buildMenuItem(
                 icon: Icons.shopping_bag,

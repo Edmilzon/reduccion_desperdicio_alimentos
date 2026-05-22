@@ -283,7 +283,7 @@ class _RealCartScreenState extends State<RealCartScreen> {
           item: item,
           success: true,
           reservationCode: order.reservationCode,
-          commerceName: order.commerceName.isNotEmpty ? order.commerceName : item.commerceName,
+          commerceName: (order.commerceName ?? '').isNotEmpty ? order.commerceName : item.commerceName,
           totalPrice: order.totalPrice > 0 ? order.totalPrice : item.price * item.quantity,
           pickupEnd: _formatPickup(item.pickupEnd),
           paymentMethod: paymentMethod,

@@ -13,7 +13,7 @@ class MyOrdersScreen extends StatefulWidget {
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final _repository = OrderRepository();
-  List<OrderResponse> _orders = [];
+  List<OrderModel> _orders = [];
   bool _isLoading = true;
   String? _error;
 
@@ -33,7 +33,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
-  Future<void> _payOrder(OrderResponse order) async {
+  Future<void> _payOrder(OrderModel order) async {
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (_) => PaymentDialog(order: order),
@@ -69,7 +69,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
-  void _showPaymentSuccess(OrderResponse order) {
+  void _showPaymentSuccess(OrderModel order) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -84,32 +84,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow('Producto', order.productTitle),
+            _detailRow('Producto', order.productTitle ?? ''),
             const SizedBox(height: 4),
             _detailRow('Total', '\$${order.totalPrice.toStringAsFixed(2)}'),
             const SizedBox(height: 4),
             _detailRow('Código', order.reservationCode),
             if (order.paidAt != null) ...[
               const SizedBox(height: 4),
-              _detailRow('Pagado el', order.paidAt!),
-            ],
-            if (order.receiptUrl != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.receipt, size: 18, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('Comprobante generado', style: TextStyle(fontSize: 13, color: AppColors.primary))),
-                  ],
-                ),
-              ),
+              _detailRow('Pagado el', _formatDate(order.paidAt)),
             ],
           ],
         ),
@@ -154,9 +136,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
-  String _formatDate(String iso) {
-    final dt = DateTime.tryParse(iso);
-    if (dt == null) return iso;
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '';
     final day = dt.day.toString().padLeft(2, '0');
     final month = dt.month.toString().padLeft(2, '0');
     final year = dt.year;
@@ -211,12 +192,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
-  Future<void> _cancelOrder(OrderResponse order) async {
+  Future<void> _cancelOrder(OrderModel order) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar Pedido', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('¿Estás seguro de cancelar la reserva de "${order.productTitle}"?'),
+        content: Text('¿Estás seguro de cancelar la reserva de "${order.productTitle ?? ''}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
           TextButton(
@@ -255,11 +236,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         itemCount: _orders.length,
         itemBuilder: (_, i) => _OrderCard(
           order: _orders[i],
-          onPay: _orders[i].isPendingPayment ? () => _payOrder(_orders[i]) : null,
+          onPay: !_orders[i].isCash && _orders[i].isPendingPayment
+              ? () => _payOrder(_orders[i])
+              : null,
           onCancel: _orders[i].status != 'cancelled' && _orders[i].status != 'confirmed'
               ? () => _cancelOrder(_orders[i])
               : null,
-          dateFormat: _formatDate,
         ),
       ),
     );
@@ -267,12 +249,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 }
 
 class _OrderCard extends StatelessWidget {
-  final OrderResponse order;
+  final OrderModel order;
   final VoidCallback? onPay;
   final VoidCallback? onCancel;
-  final String Function(String) dateFormat;
 
-  const _OrderCard({required this.order, this.onPay, this.onCancel, required this.dateFormat});
+  const _OrderCard({required this.order, this.onPay, this.onCancel});
 
   @override
   Widget build(BuildContext context) {
@@ -301,13 +282,13 @@ class _OrderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(order.productTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(order.productTitle ?? '', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           Row(
             children: [
               const Icon(Icons.store_outlined, size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 4),
-              Text(order.commerceName, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text(order.commerceName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ],
           ),
           const SizedBox(height: 4),
@@ -323,7 +304,7 @@ class _OrderCard extends StatelessWidget {
             children: [
               const Icon(Icons.calendar_today, size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 4),
-              Text(dateFormat(order.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(_formatCreatedAt(order.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               if (order.isPaid && order.paidAt != null) ...[
                 const SizedBox(width: 12),
                 const Icon(Icons.check_circle, size: 14, color: Colors.green),
@@ -378,6 +359,16 @@ class _OrderCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatCreatedAt(DateTime? dt) {
+    if (dt == null) return '';
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final year = dt.year;
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$min';
   }
 
   Color get _statusColor {

@@ -5,7 +5,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 
 class PaymentDialog extends StatefulWidget {
-  final OrderResponse order;
+  final OrderModel order;
 
   const PaymentDialog({super.key, required this.order});
 
@@ -71,12 +71,12 @@ class _PaymentDialogState extends State<PaymentDialog> {
               ),
               const SizedBox(height: 4),
               Text(
-                widget.order.productTitle,
+                widget.order.productTitle ?? '',
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 4),
               Text(
-                widget.order.commerceName,
+                widget.order.commerceName ?? '',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
               ),
             ],
