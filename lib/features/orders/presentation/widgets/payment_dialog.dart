@@ -28,19 +28,28 @@ class _PaymentDialogState extends State<PaymentDialog> {
     return AlertDialog(
       title: const Text('Método de Pago', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       content: SingleChildScrollView(
-        child: _mode == _PaymentMode.select
-            ? _buildSelection()
-            : _buildQrPayment(),
+        child: _buildContent(),
       ),
       actions: _mode == _PaymentMode.select
           ? []
           : [
               TextButton(
                 onPressed: () => setState(() => _mode = _PaymentMode.select),
-                child: const Text('Cancelar'),
+                child: const Text('Volver'),
               ),
             ],
     );
+  }
+
+  Widget _buildContent() {
+    switch (_mode) {
+      case _PaymentMode.select:
+        return _buildSelection();
+      case _PaymentMode.qr:
+        return _buildQrPayment();
+      case _PaymentMode.cash:
+        return _buildCashMessage();
+    }
   }
 
   Widget _buildSelection() {
@@ -100,7 +109,40 @@ class _PaymentDialogState extends State<PaymentDialog> {
             ),
             icon: const Icon(Icons.money, color: AppColors.textSecondary),
             label: const Text('Efectivo', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold)),
-            onPressed: () => Navigator.pop(context, {'provider': 'cash', 'transactionId': _transactionId}),
+            onPressed: () => setState(() => _mode = _PaymentMode.cash),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCashMessage() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.money_off, size: 64, color: Colors.green),
+        const SizedBox(height: 16),
+        const Text(
+          'Pago en Efectivo',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Pagarás en efectivo cuando recojas el pedido. No es necesario realizar ningún pago en línea.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendido', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
@@ -166,4 +208,4 @@ class _PaymentDialogState extends State<PaymentDialog> {
   }
 }
 
-enum _PaymentMode { select, qr }
+enum _PaymentMode { select, qr, cash }

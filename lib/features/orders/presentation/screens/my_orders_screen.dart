@@ -211,6 +211,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
+  Future<void> _cancelOrder(OrderResponse order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar Pedido', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('¿Estás seguro de cancelar la reserva de "${order.productTitle}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      await _repository.cancelOrder(order.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pedido cancelado'), backgroundColor: Colors.green),
+        );
+        _loadOrders();
+      }
+    } on OrderException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Widget _buildList() {
     return RefreshIndicator(
       onRefresh: _loadOrders,
@@ -220,6 +256,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         itemBuilder: (_, i) => _OrderCard(
           order: _orders[i],
           onPay: _orders[i].isPendingPayment ? () => _payOrder(_orders[i]) : null,
+          onCancel: _orders[i].status != 'cancelled' && _orders[i].status != 'confirmed'
+              ? () => _cancelOrder(_orders[i])
+              : null,
           dateFormat: _formatDate,
         ),
       ),
@@ -230,9 +269,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 class _OrderCard extends StatelessWidget {
   final OrderResponse order;
   final VoidCallback? onPay;
+  final VoidCallback? onCancel;
   final String Function(String) dateFormat;
 
-  const _OrderCard({required this.order, this.onPay, required this.dateFormat});
+  const _OrderCard({required this.order, this.onPay, this.onCancel, required this.dateFormat});
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +356,22 @@ class _OrderCard extends StatelessWidget {
                 ),
                 onPressed: onPay,
                 child: const Text('Pagar ahora', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+          if (onCancel != null) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onPressed: onCancel,
+                child: const Text('Cancelar pedido', style: TextStyle(fontSize: 13)),
               ),
             ),
           ],

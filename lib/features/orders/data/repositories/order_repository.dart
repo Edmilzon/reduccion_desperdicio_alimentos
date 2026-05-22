@@ -120,6 +120,34 @@ class OrderRepository {
     throw OrderException(msg ?? 'Error al procesar el pago (${response.statusCode})');
   }
 
+  Future<OrderResponse> cancelOrder(int orderId) async {
+    final token = await _getToken();
+    if (token == null) throw OrderAuthException();
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/orders/$orderId/cancel'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return OrderResponse.fromJson(jsonDecode(response.body));
+    }
+
+    final msg = _tryDecodeBody(response.body);
+    if (response.statusCode == 400) {
+      if (msg?.contains('cancelada') == true) {
+        throw OrderException('El pedido ya fue cancelado');
+      }
+    }
+    if (response.statusCode == 404) throw OrderException('Pedido no encontrado');
+    if (response.statusCode == 401) throw OrderAuthException();
+
+    throw OrderException(msg ?? 'Error al cancelar el pedido (${response.statusCode})');
+  }
+
   String? _tryDecodeBody(String raw) {
     try {
       final data = jsonDecode(raw);
