@@ -1,7 +1,13 @@
 # ============================================
-# ORDERS - Pedidos
+# ORDERS - Pedidos (Eco Bocado)
 # ============================================
 # Gestión de pedidos de productos.
+#
+# Flujo completo:
+#   1. POST /orders         → Crear reserva (genera código único + notificación)
+#   2. POST /orders/:id/pay → Pagar online (solo si paymentMethod = "online")
+#   3. GET  /orders/my-orders → Listar mis pedidos
+#   4. PATCH /orders/:id/cancel → Cancelar (restaura stock)
 #
 # Base URL: http://localhost:3000
 
@@ -13,38 +19,45 @@
 # ============================================
 # POST /orders
 # ----------------------------------
-# Descripción: Crea un nuevo pedido para un producto.
+# Descripción: Crea una nueva reserva.
+#              - Genera un código único de reserva (UUID)
+#              - Decrementa el stock del producto
+#              - Si stock llega a 0, marca producto como SOLD_OUT
+#              - Envía una notificación de confirmación al usuario
 # Autenticación: REQUERIDA - Bearer token.
-#              El usuario debe estar logueado.
 # Body (JSON):
 #   {
-#     "productId": 1,        // OBLIGATORIO - ID del producto (number)
-#     "quantity": 2,         // OBLIGATORIO - Cantidad (mínimo 1)
+#     "productId": 1,           // OBLIGATORIO - ID del producto
+#     "quantity": 2,            // OBLIGATORIO - Cantidad (mínimo 1)
 #     "paymentMethod": "online" // OPCIONAL - "cash" | "online" (default: cash)
 #   }
-# Headers:
-#   Authorization: Bearer <token>
 # Respuesta exitosa (201):
 #   {
 #     "id": 1,
 #     "buyer": { "id": 1 },
-#     "product": { "id": 1 },
+#     "product": {
+#       "id": 1,
+#       "title": "Pan Integral",
+#       "commerce": { "id": 1, "name": "Panadería Don Juan" }
+#     },
 #     "quantity": 2,
 #     "totalPrice": 7.00,
 #     "status": "confirmed",
-#     "paymentMethod": "cash",
+#     "paymentMethod": "online",
 #     "paymentStatus": "pending",
 #     "deliveryStatus": "pending",
-#     "createdAt": "..."
+#     "reservationCode": "550e8400-e29b-41d4-a716-446655440000",
+#     "paidAt": null,
+#     "receiptUrl": null,
+#     "createdAt": "2026-05-20T..."
 #   }
 # Errores comunes:
 #   - 401 Unauthorized: Sin token
-#   - 400 Bad Request: Datos inválidos
 #   - 404 Not Found: Producto no existe
-#   - 400: No hay suficiente stock
+#   - 400: Esta oferta ya no está disponible
+#   - 400: Solo quedan N unidades disponibles
 
 ###
-# Crear orden (requiere autenticación)
 POST {{baseURL}}/orders
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -52,31 +65,76 @@ Content-Type: application/json
 {
   "productId": 1,
   "quantity": 2,
-  "paymentMethod": "cash"
+  "paymentMethod": "online"
+}
+
+# ============================================
+# POST /orders/:id/pay
+# ----------------------------------
+# Descripción: Procesa el pago online de una reserva.
+#              - Marca paymentStatus como "paid"
+#              - Registra fecha y hora del pago (paidAt)
+#              - Genera comprobante (receiptUrl)
+# Autenticación: REQUERIDA - Bearer token.
+#              Solo el dueño de la orden puede pagarla.
+# Body (JSON):
+#   {
+#     "paymentProvider": "stripe",  // OPCIONAL - Para integración futura
+#     "transactionId": "tx_123"     // OPCIONAL - ID de transacción externa
+#   }
+# Respuesta exitosa (200):
+#   {
+#     "id": 1,
+#     "paymentStatus": "paid",
+#     "paidAt": "2026-05-20T12:30:00.000Z",
+#     "receiptUrl": "https://api.ecobocado.app/receipts/550e8400",
+#     "status": "confirmed",
+#     ...
+#   }
+# Errores comunes:
+#   - 401 Unauthorized: Sin token
+#   - 404 Not Found: La orden no existe o no te pertenece
+#   - 400: No se puede pagar una orden cancelada
+#   - 400: El pedido ya fue pagado
+#   - 400: Los pedidos en efectivo se pagan al recoger
+
+###
+POST {{baseURL}}/orders/{{orderId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "paymentProvider": "stripe",
+  "transactionId": "tx_123456"
 }
 
 # ============================================
 # GET /orders/my-orders
 # ----------------------------------
 # Descripción: Lista todos los pedidos del usuario actual.
+#              Incluye producto con datos del comercio.
 # Autenticación: REQUERIDA - Bearer token.
-# Headers:
-#   Authorization: Bearer <token>
 # Respuesta exitosa (200):
 #   [
 #     {
 #       "id": 1,
-#       "product": { "id": 1, "title": "...", "commerce": { "id": 1, "name": "..." } },
+#       "reservationCode": "550e8400-e29b-41d4-a716-446655440000",
+#       "product": {
+#         "id": 1,
+#         "title": "Pan Integral",
+#         "commerce": { "id": 1, "name": "Panadería Don Juan" }
+#       },
 #       "quantity": 2,
 #       "totalPrice": 7.00,
 #       "status": "confirmed",
+#       "paymentStatus": "paid",
+#       "paidAt": "2026-05-20T12:30:00.000Z",
+#       "receiptUrl": "https://api.ecobocado.app/receipts/550e8400",
 #       "createdAt": "..."
 #     }
 #   ]
-# Muestra solo los pedidos del usuario logueado.
 
 ###
-# Obtener mis órdenes (requiere autenticación)
 GET {{baseURL}}/orders/my-orders
 Authorization: Bearer {{token}}
 
@@ -84,19 +142,25 @@ Authorization: Bearer {{token}}
 # PATCH /orders/:id/cancel
 # ----------------------------------
 # Descripción: Cancela un pedido existente.
+#              - Restaura el stock del producto
+#              - Si el producto estaba SOLD_OUT, vuelve a ACTIVE
+#              - Marca la orden como "cancelled"
 # Autenticación: REQUERIDA - Bearer token.
 #              Solo el creador del pedido puede cancelarlo.
 # Params:
 #   :id - ID numérico del pedido (reemplaza {{orderId}})
 # Respuesta exitosa (200):
-#   { "message": "Orden cancelada", "status": "cancelled" }
-# Estados posibles: confirmed, cancelled
+#   {
+#     "id": 1,
+#     "status": "cancelled",
+#     "paymentStatus": "pending",
+#     ...
+#   }
 # Errores comunes:
 #   - 401 Unauthorized: Sin token
 #   - 404 Not Found: La orden no existe o no te pertenece
 #   - 400: La orden ya fue cancelada
 
 ###
-# Cancelar orden (requiere autenticación)
 PATCH {{baseURL}}/orders/{{orderId}}/cancel
 Authorization: Bearer {{token}}

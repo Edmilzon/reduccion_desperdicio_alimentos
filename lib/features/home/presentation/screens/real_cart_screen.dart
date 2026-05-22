@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 
 class RealCartScreen extends StatefulWidget {
   const RealCartScreen({super.key});
@@ -11,13 +12,26 @@ class RealCartScreen extends StatefulWidget {
 
 class _RealCartScreenState extends State<RealCartScreen> {
   final CartRepository _cartRepo = CartRepository();
+  final OrderRepository _orderRepo = OrderRepository();
   List<CartItem> _items = [];
   bool _isLoading = true;
+  bool _isCheckingOut = false;
   double _total = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadCart();
+    CartRepository.notifier.addListener(_onCartChanged);
+  }
+
+  @override
+  void dispose() {
+    CartRepository.notifier.removeListener(_onCartChanged);
+    super.dispose();
+  }
+
+  void _onCartChanged() {
     _loadCart();
   }
 
@@ -32,10 +46,10 @@ class _RealCartScreenState extends State<RealCartScreen> {
     });
   }
 
-  Future<void> _updateQuantity(int productId, int delta) async {
+  Future<void> _updateQuantity(int productId, int delta, int stock) async {
     final item = _items.firstWhere((i) => i.productId == productId);
     final newQty = item.quantity + delta;
-    await _cartRepo.updateQuantity(productId, newQty);
+    await _cartRepo.updateQuantity(productId, newQty, stock);
     _loadCart();
   }
 
@@ -110,8 +124,8 @@ class _RealCartScreenState extends State<RealCartScreen> {
             itemCount: _items.length,
             itemBuilder: (context, index) => _CartItemCard(
               item: _items[index],
-              onIncrement: () => _updateQuantity(_items[index].productId, 1),
-              onDecrement: () => _updateQuantity(_items[index].productId, -1),
+              onIncrement: () => _updateQuantity(_items[index].productId, 1, _items[index].stock),
+              onDecrement: () => _updateQuantity(_items[index].productId, -1, _items[index].stock),
               onRemove: () => _removeItem(_items[index].productId),
             ),
           ),
@@ -169,15 +183,24 @@ class _RealCartScreenState extends State<RealCartScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () => _showCheckoutDialog(),
-                child: const Text(
-                  'Proceder al Pago',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: _isCheckingOut ? null : () => _processCheckout(),
+                child: _isCheckingOut
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Reservar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -212,27 +235,148 @@ class _RealCartScreenState extends State<RealCartScreen> {
     );
   }
 
-  void _showCheckoutDialog() {
+  Future<void> _processCheckout() async {
+    setState(() => _isCheckingOut = true);
+
+    final List<_OrderResult> results = [];
+    for (final item in _items) {
+      if (!mounted) return;
+      try {
+        final order = await _orderRepo.createOrder(
+          productId: item.productId,
+          quantity: item.quantity,
+        );
+        results.add(_OrderResult(
+          item: item,
+          success: true,
+          reservationCode: order.reservationCode,
+          commerceName: order.commerceName.isNotEmpty ? order.commerceName : item.commerceName,
+          totalPrice: order.totalPrice > 0 ? order.totalPrice : item.price * item.quantity,
+          pickupEnd: _formatPickup(item.pickupEnd),
+        ));
+      } on OrderNotAvailableException {
+        results.add(_OrderResult(item: item, success: false, error: 'Oferta agotada'));
+      } on OrderInsufficientStockException catch (e) {
+        results.add(_OrderResult(item: item, success: false, error: e.message));
+      } on OrderException catch (e) {
+        results.add(_OrderResult(item: item, success: false, error: e.message));
+      } catch (e) {
+        results.add(_OrderResult(item: item, success: false, error: 'Error de conexión'));
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isCheckingOut = false);
+
+    final succeeded = results.where((r) => r.success).toList();
+    final failed = results.where((r) => !r.success).toList();
+
+    for (final r in succeeded) {
+      await _cartRepo.removeItem(r.item.productId);
+    }
+
+    if (!mounted) return;
+    _loadCart();
+    _showCheckoutResultDialog(succeeded, failed);
+  }
+
+  void _showCheckoutResultDialog(List<_OrderResult> succeeded, List<_OrderResult> failed) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pedido Confirmado'),
-        content: const Text('¡Gracias por tu compra! En una app real, aquí redirect a pasarela de pago.'),
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              failed.isEmpty ? Icons.check_circle : Icons.warning_amber_rounded,
+              color: failed.isEmpty ? Colors.green : AppColors.primary,
+              size: 26,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                failed.isEmpty ? 'Reserva Confirmada' : 'Reserva Parcial',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (succeeded.isNotEmpty) ...[
+                ...succeeded.map((r) => _OrderSummaryCard(result: r)),
+              ],
+              if (failed.isNotEmpty) ...[
+                if (succeeded.isNotEmpty) const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text('Reservas fallidas:',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                const SizedBox(height: 8),
+                ...failed.map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.cancel, size: 18, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(r.item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text(r.error ?? '', style: const TextStyle(fontSize: 12, color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+            ],
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () async {
-              await _cartRepo.clearCart();
-              if (mounted) {
-                Navigator.pop(context);
-                _loadCart();
-              }
-            },
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Aceptar'),
           ),
         ],
       ),
     );
   }
+
+  String _formatPickup(DateTime? dt) {
+    if (dt == null) return '—';
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '$day/$month ${hour}h$min';
+  }
+}
+
+class _OrderResult {
+  final CartItem item;
+  final bool success;
+  final String? reservationCode;
+  final String? commerceName;
+  final double? totalPrice;
+  final String? pickupEnd;
+  final String? error;
+
+  _OrderResult({
+    required this.item,
+    required this.success,
+    this.reservationCode,
+    this.commerceName,
+    this.totalPrice,
+    this.pickupEnd,
+    this.error,
+  });
 }
 
 class _CartItemCard extends StatelessWidget {
@@ -351,6 +495,102 @@ class _CartItemCard extends StatelessWidget {
       height: 80,
       color: Colors.grey[200],
       child: const Icon(Icons.fastfood, color: Colors.grey),
+    );
+  }
+}
+
+class _OrderSummaryCard extends StatelessWidget {
+  final _OrderResult result;
+
+  const _OrderSummaryCard({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle, size: 18, color: Colors.green),
+              const SizedBox(width: 6),
+              Text(
+                result.item.title,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _summaryRow(Icons.store_outlined, 'Restaurante', result.commerceName ?? result.item.commerceName ?? '—'),
+          const SizedBox(height: 4),
+          _summaryRow(Icons.shopping_bag_outlined, 'Producto', result.item.title),
+          const SizedBox(height: 4),
+          _summaryRow(Icons.numbers_outlined, 'Cantidad', '${result.item.quantity}'),
+          const SizedBox(height: 4),
+          _summaryRow(Icons.attach_money_outlined, 'Total', '\$${(result.totalPrice ?? result.item.price * result.item.quantity).toStringAsFixed(2)}'),
+          const SizedBox(height: 4),
+          _summaryRow(Icons.access_time_outlined, 'Recoger antes de', result.pickupEnd ?? '—'),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.qr_code, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Código de reserva',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      Text(
+                        result.reservationCode ?? '—',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -17,13 +17,12 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
-  final CartRepository _cartRepo = CartRepository();
   int _cartCount = 0;
 
   final _screens = [
     const MenuScreen(),
     const ShopScreen(),
-    const RealCartScreen(),
+    RealCartScreen(key: const ValueKey('cart')),
     const NearbyRestaurantsScreen(),
     const ProfileScreen(),
   ];
@@ -32,10 +31,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   void initState() {
     super.initState();
     _updateCartCount();
+    CartRepository.notifier.addListener(_onCartChanged);
+  }
+
+  @override
+  void dispose() {
+    CartRepository.notifier.removeListener(_onCartChanged);
+    super.dispose();
+  }
+
+  void _onCartChanged() {
+    _updateCartCount();
   }
 
   Future<void> _updateCartCount() async {
-    final count = await _cartRepo.getItemCount();
+    final count = await CartRepository().getItemCount();
     if (mounted) {
       setState(() => _cartCount = count);
     }
@@ -43,9 +53,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   void _onTabChanged(int index) {
     setState(() => _currentIndex = index);
-    if (index == 2) {
-      _updateCartCount();
-    }
   }
 
   @override

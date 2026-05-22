@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CartItem {
@@ -9,6 +10,8 @@ class CartItem {
   final int quantity;
   final int? commerceId;
   final String? commerceName;
+  final int stock;
+  final DateTime? pickupEnd;
 
   CartItem({
     required this.productId,
@@ -18,6 +21,8 @@ class CartItem {
     required this.quantity,
     this.commerceId,
     this.commerceName,
+    required this.stock,
+    this.pickupEnd,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +33,8 @@ class CartItem {
     'quantity': quantity,
     'commerceId': commerceId,
     'commerceName': commerceName,
+    'stock': stock,
+    'pickupEnd': pickupEnd?.toIso8601String(),
   };
 
   factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
@@ -38,6 +45,8 @@ class CartItem {
     quantity: json['quantity'] ?? 1,
     commerceId: json['commerceId'],
     commerceName: json['commerceName'],
+    stock: json['stock'] != null ? (json['stock'] is int ? json['stock'] : int.tryParse(json['stock'].toString()) ?? 0) : (json['quantity'] ?? 0),
+    pickupEnd: json['pickupEnd'] != null ? DateTime.tryParse(json['pickupEnd']) : null,
   );
 
   CartItem copyWith({int? quantity}) => CartItem(
@@ -48,11 +57,20 @@ class CartItem {
     quantity: quantity ?? this.quantity,
     commerceId: commerceId,
     commerceName: commerceName,
+    stock: stock,
+    pickupEnd: pickupEnd,
   );
+}
+
+class _CartNotifier extends ChangeNotifier {
+  void refresh() => notifyListeners();
 }
 
 class CartRepository {
   static const String _cartKey = 'cart_items';
+  static final _CartNotifier _notifier = _CartNotifier();
+
+  static _CartNotifier get notifier => _notifier;
   
   Future<List<CartItem>> getCartItems() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,22 +81,28 @@ class CartRepository {
     return cartList.map((item) => CartItem.fromJson(item)).toList();
   }
 
-  Future<void> addItem(CartItem item) async {
+  Future<void> addItem(CartItem item, int availableStock) async {
     final items = await getCartItems();
     final existingIndex = items.indexWhere((i) => i.productId == item.productId);
     
     if (existingIndex >= 0) {
-      items[existingIndex] = items[existingIndex].copyWith(
-        quantity: items[existingIndex].quantity + item.quantity,
-      );
+      final currentQty = items[existingIndex].quantity;
+      final newQty = currentQty + item.quantity;
+      if (newQty > availableStock) {
+        items[existingIndex] = items[existingIndex].copyWith(quantity: availableStock);
+      } else {
+        items[existingIndex] = items[existingIndex].copyWith(quantity: newQty);
+      }
     } else {
-      items.add(item);
+      final qty = item.quantity > availableStock ? availableStock : item.quantity;
+      items.add(item.copyWith(quantity: qty));
     }
     
     await _saveItems(items);
+    _notifier.refresh();
   }
 
-  Future<void> updateQuantity(int productId, int quantity) async {
+  Future<void> updateQuantity(int productId, int quantity, int availableStock) async {
     final items = await getCartItems();
     final index = items.indexWhere((i) => i.productId == productId);
     
@@ -86,9 +110,11 @@ class CartRepository {
       if (quantity <= 0) {
         items.removeAt(index);
       } else {
-        items[index] = items[index].copyWith(quantity: quantity);
+        final cappedQty = quantity > availableStock ? availableStock : quantity;
+        items[index] = items[index].copyWith(quantity: cappedQty);
       }
       await _saveItems(items);
+      _notifier.refresh();
     }
   }
 
@@ -96,11 +122,13 @@ class CartRepository {
     final items = await getCartItems();
     items.removeWhere((i) => i.productId == productId);
     await _saveItems(items);
+    _notifier.refresh();
   }
 
   Future<void> clearCart() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cartKey);
+    _notifier.refresh();
   }
 
   Future<int> getItemCount() async {

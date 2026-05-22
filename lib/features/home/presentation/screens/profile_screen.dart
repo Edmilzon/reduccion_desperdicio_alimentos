@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -165,6 +166,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               _buildMenuItem(
+                icon: Icons.shopping_bag,
+                title: 'Mis Pedidos',
+                subtitle: 'Ver historial de pedidos',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOrdersScreen())),
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
                 icon: Icons.inventory_2,
                 title: 'Mis Productos',
                 subtitle: 'Gestionar ofertas y ventas',
@@ -180,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.shopping_bag,
                 title: 'Mis Pedidos',
                 subtitle: 'Ver historial de pedidos',
-                onTap: () {},
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOrdersScreen())),
               ),
               const SizedBox(height: 8),
               _buildMenuItem(

@@ -28,11 +28,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _loadProduct() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _quantity = 1;
+    });
     try {
       final product = await _repository.getProductById(widget.productId);
       setState(() {
         _product = product;
+        _quantity = 1;
         _isLoading = false;
       });
     } catch (e) {
@@ -190,7 +194,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 _buildPickupSection(p),
                 const SizedBox(height: 24),
                 _buildInfoSection(p),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                _buildQuantitySelector(p),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 54,
@@ -225,6 +231,61 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuantitySelector(ProductModel p) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Text(
+            'Cantidad:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 16),
+          _QuantityButton(
+            icon: Icons.remove,
+            onPressed: _quantity > 1
+                ? () => setState(() => _quantity--)
+                : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              '$_quantity',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          _QuantityButton(
+            icon: Icons.add,
+            onPressed: _quantity < p.quantity
+                ? () => setState(() => _quantity++)
+                : null,
+          ),
+          const Spacer(),
+          Text(
+            'Stock: ${p.quantity}',
+            style: TextStyle(
+              fontSize: 12,
+              color: p.quantity <= 2 ? Colors.red : AppColors.textSecondary,
+              fontWeight: p.quantity <= 2 ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -454,8 +515,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       quantity: _quantity,
       commerceId: p.commerceId,
       commerceName: p.commerceName,
+      stock: p.quantity,
+      pickupEnd: p.pickupEnd,
     );
-    await _cartRepo.addItem(cartItem);
+    await _cartRepo.addItem(cartItem, p.quantity);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -473,5 +536,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
       );
     }
+  }
+}
+
+class _QuantityButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _QuantityButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onPressed != null;
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isEnabled ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isEnabled ? AppColors.primary : Colors.grey,
+        ),
+      ),
+    );
   }
 }

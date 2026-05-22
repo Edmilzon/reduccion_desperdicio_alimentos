@@ -64,10 +64,7 @@ class _CommerceProductsScreenState extends State<CommerceProductsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const BackButton(),
         title: Text(
           widget.commerce.name,
           style: const TextStyle(
