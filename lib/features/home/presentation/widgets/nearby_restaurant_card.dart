@@ -18,6 +18,8 @@ class NearbyRestaurantCard extends StatelessWidget {
         ? '${commerce.distance!.toStringAsFixed(1)} km'
         : '-- km';
 
+    final bool isInactive = !commerce.hasActiveOffers;
+
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -36,14 +38,17 @@ class NearbyRestaurantCard extends StatelessWidget {
                 width: 90,
                 height: 90,
                 color: AppColors.cardBg,
-                child: commerce.imageUrl != null && commerce.imageUrl!.isNotEmpty
-                    ? Image.network(
-                        commerce.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.store, color: AppColors.primary),
-                      )
-                    : const Icon(Icons.store, color: AppColors.primary),
+                child: Opacity(
+                  opacity: isInactive ? 0.6 : 1.0,
+                  child: commerce.imageUrl != null && commerce.imageUrl!.isNotEmpty
+                      ? Image.network(
+                          commerce.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.store, color: AppColors.primary),
+                        )
+                      : const Icon(Icons.store, color: AppColors.primary),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -54,20 +59,29 @@ class NearbyRestaurantCard extends StatelessWidget {
                 children: [
                   Text(
                     commerce.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: isInactive ? Colors.grey : AppColors.textPrimary,
                     ),
                   ),
+                  if (commerce.branchName != null && commerce.branchName!.isNotEmpty)
+                    Text(
+                      commerce.branchName!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isInactive ? Colors.grey : Colors.green[700],
+                      ),
+                    ),
                   const SizedBox(height: 5),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.circle, size: 10, color: Colors.green),
-                      SizedBox(width: 6),
+                      Icon(Icons.circle, size: 10, color: isInactive ? Colors.grey : Colors.green),
+                      const SizedBox(width: 6),
                       Text(
-                        'Disponible',
-                        style: TextStyle(color: Colors.green, fontSize: 13),
+                        isInactive ? 'Sin ofertas' : 'Disponible',
+                        style: TextStyle(color: isInactive ? Colors.grey : Colors.green, fontSize: 13),
                       ),
                     ],
                   ),

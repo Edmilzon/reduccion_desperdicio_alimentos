@@ -127,7 +127,7 @@ class _ShopScreenState extends State<ShopScreen> {
           if (_selectedShopTab == 0 && !showProducts) _buildFilters(),
           Expanded(
             child: _selectedShopTab == 1
-            ? const NearbyRestaurantsScreen()
+            ? const NearbyRestaurantsScreen(embedded: true)
             
             : _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -536,7 +536,7 @@ class _CommerceCard extends StatelessWidget {
         child: Stack(
           children: [
             Container(
-              height: 120,
+              height: 128,
               decoration: BoxDecoration(
                 color: AppColors.cardBg,
                 borderRadius: BorderRadius.circular(16),
@@ -545,7 +545,7 @@ class _CommerceCard extends StatelessWidget {
                 children: [
                   Container(
                     width: 120,
-                    height: 120,
+                    height: 128,
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
@@ -554,18 +554,24 @@ class _CommerceCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             commerce.name,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           if (commerce.description != null) ...[
                             const SizedBox(height: 4),
@@ -633,7 +639,7 @@ class _CommerceCard extends StatelessWidget {
           commerce.imageUrl!,
           fit: BoxFit.cover,
           width: 120,
-          height: 120,
+          height: 128,
           errorBuilder: (context, error, stack) => const Icon(
             Icons.store, size: 48, color: AppColors.primary,
           ),

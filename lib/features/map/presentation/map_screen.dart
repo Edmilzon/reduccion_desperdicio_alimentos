@@ -18,6 +18,8 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<MapCommerceModel> _commerces = [];
+  LatLng _mapCenter = const LatLng(-17.423, -66.119);
+  double _mapZoom = 13.0;
   LatLng? _currentLocation;
   bool _isLoading = false;
   String? _errorMessage;
@@ -27,6 +29,20 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initLocation();
+  }
+
+  void _safeMapMove(LatLng center, double zoom) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _mapController.move(center, zoom);
+      } catch (_) {
+        setState(() {
+          _mapCenter = center;
+          _mapZoom = zoom;
+        });
+      }
+    });
   }
 
   Future<void> _initLocation() async {
@@ -42,16 +58,19 @@ class _MapScreenState extends State<MapScreen> {
       
       setState(() {
         _currentLocation = currentLatLng;
+        _mapCenter = currentLatLng;
+        _mapZoom = 15.0;
       });
-      
-      _mapController.move(currentLatLng, 15.0);
+
+      _safeMapMove(currentLatLng, 15.0);
       await _fetchNearbyCommerces(currentLatLng);
     } catch (e) {
       setState(() {
         _permissionDenied = true;
         _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
-      _showErrorDialog(_errorMessage!);
+      await _fetchNearbyCommerces(_mapCenter);
+      if (mounted) _showErrorDialog(_errorMessage!);
     } finally {
       setState(() {
         _isLoading = false;
@@ -92,9 +111,13 @@ class _MapScreenState extends State<MapScreen> {
       });
       
       if (results.isNotEmpty) {
-        // Mover el mapa al primer resultado
         final first = results.first;
-        _mapController.move(LatLng(first.latitude, first.longitude), 14.0);
+        final center = LatLng(first.latitude, first.longitude);
+        setState(() {
+          _mapCenter = center;
+          _mapZoom = 14.0;
+        });
+        _safeMapMove(center, 14.0);
       } else {
         setState(() {
           _errorMessage = 'No se encontraron restaurantes cerca de esa dirección.';
@@ -125,6 +148,114 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  void _showCommerceBottomSheet(MapCommerceModel commerce) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final bool isInactive = !commerce.hasActiveOffers;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          commerce.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        if (commerce.branchName != null && commerce.branchName!.isNotEmpty)
+                          Text(
+                            commerce.branchName!,
+                            style: TextStyle(color: Colors.green[700], fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (commerce.distance != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${commerce.distance!.toStringAsFixed(1)} km',
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (commerce.description != null)
+                Text(
+                  commerce.description!,
+                  style: TextStyle(color: Colors.grey[600]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 18, color: isInactive ? Colors.grey : Colors.orange),
+                  const SizedBox(width: 8),
+                  Text(
+                    isInactive 
+                      ? 'Sin ofertas activas en esta sede' 
+                      : 'Recogida hasta: ${commerce.pickupLimit ?? "Sin definir"}',
+                    style: TextStyle(
+                      color: isInactive ? Colors.grey : Colors.black87,
+                      fontWeight: isInactive ? FontWeight.normal : FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final restaurantId = int.tryParse(
+                          commerce.restaurantId ?? commerce.id,
+                        ) ??
+                        0;
+                    if (restaurantId <= 0) return;
+                    Navigator.pushNamed(
+                      context,
+                      '/restaurant-detail',
+                      arguments: {'commerceId': restaurantId},
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.green,
+                    disabledBackgroundColor: Colors.grey[300],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    isInactive
+                        ? 'VER LOCAL (SIN OFERTAS ACTIVAS)'
+                        : 'VER OFERTAS DISPONIBLES',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,14 +265,20 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           FlutterMap(
+            key: ValueKey('${_mapCenter.latitude},${_mapCenter.longitude},$_mapZoom'),
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _currentLocation ?? const LatLng(-16.5, -68.15), // Centro por defecto (ej. La Paz)
-              initialZoom: 13.0,
+              initialCenter: _mapCenter,
+              initialZoom: _mapZoom,
               onTap: (tapPosition, point) {
-                // Al tocar el mapa, buscar por esa ubicación (Opcional según la HU)
                 _fetchNearbyCommerces(point);
-                _mapController.move(point, 15.0);
+                _safeMapMove(point, 15.0);
+              },
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture) {
+                  // Si el usuario movió el mapa manualmente, recargar
+                  _fetchNearbyCommerces(position.center);
+                }
               },
             ),
             children: [
@@ -151,41 +288,75 @@ class _MapScreenState extends State<MapScreen> {
               ),
               MarkerLayer(
                 markers: _commerces.map((commerce) {
+                  final bool isInactive = !commerce.hasActiveOffers;
                   return Marker(
                     point: LatLng(commerce.latitude, commerce.longitude),
                     width: 150,
-                    height: 80,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: const [BoxShadow(blurRadius: 3, color: Colors.black26)]
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                commerce.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (commerce.distance != null)
-                                Text(
-                                  '${commerce.distance!.toStringAsFixed(1)} km',
-                                  style: const TextStyle(color: Colors.green, fontSize: 10),
+                    height: 90,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Aquí se implementará el bottom sheet en la siguiente tarea
+                        _showCommerceBottomSheet(commerce);
+                      },
+                      child: Opacity(
+                        opacity: isInactive ? 0.6 : 1.0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isInactive ? Colors.grey[200] : Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isInactive ? Colors.grey : Colors.green,
+                                  width: 1,
                                 ),
-                            ],
-                          ),
+                                boxShadow: const [
+                                  BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2))
+                                ]
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    commerce.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold, 
+                                      fontSize: 11,
+                                      color: isInactive ? Colors.grey[700] : Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (commerce.branchName != null && commerce.branchName!.isNotEmpty)
+                                    Text(
+                                      commerce.branchName!,
+                                      style: TextStyle(
+                                        fontSize: 9, 
+                                        color: isInactive ? Colors.grey : Colors.green[700],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  if (commerce.distance != null)
+                                    Text(
+                                      '${commerce.distance!.toStringAsFixed(1)} km',
+                                      style: TextStyle(
+                                        color: isInactive ? Colors.grey : Colors.green, 
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.location_on,
+                              color: isInactive ? Colors.grey : Colors.red,
+                              size: 32,
+                            ),
+                          ],
                         ),
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.red,
-                          size: 30,
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 }).toList(),

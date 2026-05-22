@@ -39,7 +39,15 @@ class LocationService {
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
     return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 8),
+      ),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception(
+        'No se pudo obtener la ubicación a tiempo. Se usará una ubicación por defecto.',
+      ),
     );
   }
 }
