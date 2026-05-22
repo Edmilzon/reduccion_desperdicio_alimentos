@@ -1,0 +1,175 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/order_model.dart';
+
+class OrderRepository {
+  static const String baseUrl = ApiConstants.baseUrl;
+  static const String _tokenKey = 'auth_token';
+
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+
+    if (token == null || token.isEmpty) {
+      throw OrderAuthException();
+    }
+
+    return token;
+  }
+
+  Future<OrderModel> createCashOrder({
+    required int productId,
+    required int quantity,
+  }) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/orders'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'productId': productId,
+        'quantity': quantity,
+        'paymentMethod': 'cash',
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return OrderModel.fromJson(jsonDecode(response.body));
+    }
+
+    _handleOrderError(response);
+  }
+
+  Future<List<OrderModel>> getMyOrders() async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/orders/my-orders'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => OrderModel.fromJson(json)).toList();
+    }
+
+    _handleOrderError(response);
+  }
+
+  Future<List<OrderModel>> getMerchantOrders() async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/orders/merchant'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => OrderModel.fromJson(json)).toList();
+    }
+
+    _handleOrderError(response);
+  }
+
+  Future<OrderModel> markPaidAndDelivered(int orderId) async {
+    final token = await _getToken();
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/orders/$orderId/mark-paid-delivered'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return OrderModel.fromJson(jsonDecode(response.body));
+    }
+
+    _handleOrderError(response);
+  }
+
+  Never _handleOrderError(http.Response response) {
+    final message = _extractError(response);
+
+    if (response.statusCode == 400) {
+      if (message.contains('ya no está disponible') ||
+          message.contains('Oferta agotada')) {
+        throw OrderNotAvailableException();
+      }
+
+      if (message.contains('Solo quedan') ||
+          message.contains('unidades disponibles') ||
+          message.contains('Cantidad no disponible')) {
+        throw OrderInsufficientStockException(message);
+      }
+
+      throw OrderException(message);
+    }
+
+    if (response.statusCode == 401) {
+      throw OrderAuthException();
+    }
+
+    if (response.statusCode == 403) {
+      throw OrderException('No tienes permiso para realizar esta acción');
+    }
+
+    if (response.statusCode == 404) {
+      throw OrderException('Pedido no encontrado');
+    }
+
+    throw OrderException(message);
+  }
+
+  String _extractError(http.Response response) {
+    try {
+      final data = jsonDecode(response.body);
+      final message = data['message'];
+
+      if (message is List) {
+        return message.join(', ');
+      }
+
+      return message?.toString() ??
+          'Error inesperado (${response.statusCode})';
+    } catch (_) {
+      return 'Error de conexión con el servidor (${response.statusCode})';
+    }
+  }
+}
+
+class OrderException implements Exception {
+  final String message;
+
+  OrderException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class OrderAuthException extends OrderException {
+  OrderAuthException() : super('Debes iniciar sesión para reservar');
+}
+
+class OrderNotAvailableException extends OrderException {
+  OrderNotAvailableException() : super('Oferta agotada');
+}
+
+class OrderInsufficientStockException extends OrderException {
+  OrderInsufficientStockException(super.message);
+}
