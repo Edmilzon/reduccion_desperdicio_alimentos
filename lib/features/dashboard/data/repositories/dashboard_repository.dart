@@ -54,8 +54,10 @@ class DashboardRepository {
         }
       }
     }
-    if (id == null) throw Exception('No hay comercio asociado.	Inicia sesión como comerciante.');
-    return int.parse(id);
+    if (id == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
+    final parsed = int.tryParse(id);
+    if (parsed == null) throw Exception('ID de comercio inválido. Revisa SharedPreferences.');
+    return parsed;
   }
 
   Future<List<CategoryModel>> getCategorias() async {
@@ -177,8 +179,12 @@ class DashboardRepository {
       final data = jsonDecode(response.body);
       return data['id'] ?? 0;
     } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['message'] ?? 'Error al crear producto');
+      try {
+        final data = jsonDecode(response.body);
+        throw Exception(data['message'] ?? 'Error al crear producto (${response.statusCode})');
+      } catch (_) {
+        throw Exception('Error al crear producto (${response.statusCode})');
+      }
     }
   }
 

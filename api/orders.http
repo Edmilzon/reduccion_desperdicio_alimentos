@@ -1,24 +1,39 @@
 @baseURL = https://reduccion-desperdicio-backend.vercel.app/
-@token = your_jwt_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE4LCJlbWFpbCI6InRlc3RjbGllbnRlXzE3Nzk0ODg1MTVAdGVzdC5jb20iLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzc5NDg4NjA5LCJleHAiOjE3Nzk1NzUwMDl9.DVcR8PrjzOLcFKQzeK4EEAUS395M2df0Bv5ZC0etW50
 @productId = 1
 @orderId = 1
 
 # ────────────────────────────────────────────
-# FLUJO DE PAGO
+# FLUJO DE ÓRDENES
 # ────────────────────────────────────────────
 #
-# 1. EFECTIVO
-#    POST /orders  (paymentMethod: "cash")
-#    → El cliente paga cuando recoge el pedido.
-#    → NO se llama a POST /orders/:id/pay (el backend lo rechaza con 400).
+# Todos los endpoints requieren JWT (guard a nivel de clase).
 #
-# 2. QR / ONLINE
-#    a) POST /orders  (paymentMethod: "online")
+# 1. CREAR RESERVA
+#    POST /orders  (paymentMethod: "cash" | "online")
+#    → Decrementa stock del producto.
+#    → Si stock llega a 0, marca producto como SOLD_OUT.
+#    → Crea notificación automática para el comercio.
+#
+# 2. FLUJO DE PAGO
+#
+#    a) EFECTIVO (paymentMethod: "cash")
+#       → El cliente paga al recoger.
+#       → El merchant llama a PATCH /orders/:id/mark-paid-delivered
+#         para marcar como pagado y entregado en un solo paso.
+#       → NO se llama a POST /orders/:id/pay (el backend lo rechaza con 400).
+#
+#    b) ONLINE / QR (paymentMethod: "online")
 #       → Backend crea la orden, devuelve reservationCode.
-#    b) El frontend genera un QR con los datos del pago.
-#    c) El usuario escanea y paga externamente.
-#    d) El frontend llama a POST /orders/:id/pay
-#       → Backend marca paymentStatus = "paid", genera receiptUrl.
+#       → El frontend genera un QR con los datos del pago.
+#       → El usuario escanea y paga externamente.
+#       → El frontend llama a POST /orders/:id/pay
+#         → Backend marca paymentStatus = "paid", genera receiptUrl.
+#
+# 3. CANCELAR
+#    PATCH /orders/:id/cancel
+#    → Restaura la cantidad al stock del producto.
+#    → Si el producto estaba SOLD_OUT, lo vuelve a ACTIVE.
 #
 # ────────────────────────────────────────────
 
@@ -32,10 +47,40 @@ Content-Type: application/json
   "quantity": 2,
   "paymentMethod": "online"
 }
-# 201 → { id, buyer, product, quantity, totalPrice, status, paymentMethod,
-#         paymentStatus, deliveryStatus, reservationCode, paidAt, receiptUrl,
-#         createdAt }
+# 201 → { id, buyer, product: { id, title, price }, quantity, totalPrice,
+#         status, paymentMethod, paymentStatus, deliveryStatus,
+#         reservationCode, paidAt, receiptUrl, createdAt }
 # El backend: decrementa stock, si llega a 0 marca SOLD_OUT, crea notificación.
+# Errores:
+#   400 → validación (quantity > 0, paymentMethod válido)
+#   404 → productId no encontrado
+#   409 → producto agotado (quantity = 0)
+
+### Listar pedidos del usuario comprador (más recientes primero)
+GET {{baseURL}}/orders/my-orders
+Authorization: Bearer {{token}}
+# 200 → [ { id, product: { id, title, imageUrl }, quantity, totalPrice,
+#           paymentMethod, paymentStatus, deliveryStatus, status,
+#           reservationCode, paidAt, createdAt } ]
+
+### Listar pedidos del comercio del merchant (dueño del comercio)
+GET {{baseURL}}/orders/merchant
+Authorization: Bearer {{token}}
+# 200 → [ { id, buyer: { id, email, name }, product: { id, title },
+#           quantity, totalPrice, paymentMethod, paymentStatus,
+#           deliveryStatus, status, reservationCode, createdAt } ]
+# Errores:
+#   403 → el usuario no es merchant o no tiene comercios
+
+### Marcar pedido como pagado y entregado (solo merchant, para pedidos cash)
+PATCH {{baseURL}}/orders/{{orderId}}/mark-paid-delivered
+Authorization: Bearer {{token}}
+# 200 → { ...order, paymentStatus: "paid", deliveryStatus: "delivered" }
+# Errores:
+#   401 → no autenticado
+#   403 → no eres el merchant del comercio asociado
+#   400 → pedido ya pagado o ya entregado
+#   404 → pedido no encontrado
 
 ### Confirmar pago online (solo si paymentMethod = "online")
 POST {{baseURL}}/orders/{{orderId}}/pay
@@ -43,17 +88,17 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {}
-# 200 → paymentStatus = "paid", paidAt, receiptUrl generada
+# 200 → { ...order, paymentStatus: "paid", paidAt, receiptUrl }
 # Errores:
-#   400 → método cash (se paga al recoger)
+#   400 → método cash (se paga al recoger con mark-paid-delivered)
 #   400 → ya pagada
 #   400 → orden cancelada
-
-### Listar pedidos del usuario (más recientes primero)
-GET {{baseURL}}/orders/my-orders
-Authorization: Bearer {{token}}
+#   404 → orden no encontrada
 
 ### Cancelar pedido (restaura stock, si estaba SOLD_OUT vuelve a ACTIVE)
 PATCH {{baseURL}}/orders/{{orderId}}/cancel
 Authorization: Bearer {{token}}
-# 200 → order con status = "cancelled"
+# 200 → { ...order, status: "cancelled" }
+# Errores:
+#   400 → orden ya cancelada
+#   404 → orden no encontrada

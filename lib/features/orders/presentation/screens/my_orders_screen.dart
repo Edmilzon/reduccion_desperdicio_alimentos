@@ -59,12 +59,28 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     } on OrderException catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        _showPaymentError(e.message);
+        if (e.message.contains('ya fue pagado')) {
+          _showPaymentSuccess(OrderModel(
+            id: order.id,
+            reservationCode: order.reservationCode,
+            quantity: order.quantity,
+            totalPrice: order.totalPrice,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: 'paid',
+            deliveryStatus: order.deliveryStatus,
+            status: order.status,
+            productTitle: order.productTitle,
+            commerceName: order.commerceName,
+            paidAt: DateTime.now(),
+          ));
+        } else {
+          _showPaymentError(e.message);
+        }
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        _showPaymentError('Pago no realizado, intenta nuevamente');
+        _showPaymentError('Pago no realizado, verifica el estado del pedido');
       }
     }
   }
@@ -97,7 +113,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () { Navigator.pop(ctx); _loadOrders(); },
+            onPressed: () {
+              Navigator.pop(ctx);
+              _loadOrders();
+            },
             child: const Text('Aceptar'),
           ),
         ],
@@ -116,11 +135,32 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             Expanded(child: Text('Pago Fallido', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
           ],
         ),
-        content: Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Si el pago ya se realizó, puedes verificar el estado actualizando la lista de pedidos.',
+                style: TextStyle(fontSize: 12, color: AppColors.darkBrown),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Intentar de nuevo'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _loadOrders();
+            },
+            child: const Text('Verificar estado'),
           ),
         ],
       ),

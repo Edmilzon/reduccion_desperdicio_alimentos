@@ -437,7 +437,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               CustomLabel('Imagen del producto'),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: _isUploadingImage ? null : _showImageSourceOptions,
+                onTap: (_isUploadingImage || isLoading) ? null : _showImageSourceOptions,
                 child: Container(
                   width: double.infinity,
                   height: 160,
@@ -481,9 +481,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                   Positioned(
                                     top: 8,
                                     right: 8,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _selectedImage = null),
-                                      child: Container(
+                child: GestureDetector(
+                                          onTap: isLoading ? null : () => setState(() => _selectedImage = null),
+                                          child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: const BoxDecoration(
                                           color: Colors.white,

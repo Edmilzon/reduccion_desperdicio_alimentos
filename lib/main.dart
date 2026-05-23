@@ -1,3 +1,4 @@
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
@@ -9,6 +10,22 @@ import 'package:reduccion_desperdicio_alimentos/routes/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    FlutterError.dumpErrorToConsole(details);
+    assert(() {
+      // ignore: avoid_print
+      print('CRASH: ${details.exception}\n${details.stack}');
+      return true;
+    }());
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    // ignore: avoid_print
+    print('PLATFORM CRASH: $error\n$stack');
+    return true;
+  };
+
   final prefs = await SharedPreferences.getInstance();
   runApp(MyApp(prefs: prefs));
 }
