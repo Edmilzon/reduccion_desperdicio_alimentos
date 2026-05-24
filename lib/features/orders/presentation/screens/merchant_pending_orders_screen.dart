@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/widgets/payment_status_badge.dart';
@@ -14,67 +16,156 @@ class MerchantPendingOrdersScreen extends StatefulWidget {
 
 class _MerchantPendingOrdersScreenState
     extends State<MerchantPendingOrdersScreen> {
-      final OrderRepository _repository = OrderRepository();
-      
-      bool _isLoading = true;
-      bool _isUpdating = false;
-      String? _error;
-      List<OrderModel> _orders = [];
-      
-      int _selectedTab = 0;
-      
-      @override
-      void initState() {
-        super.initState();
-        _loadOrders();
-      }
-      
-      Future<void> _loadOrders() async {
-        setState(() {
-          _isLoading = true;
-          _error = null;
-        });
-        
-        try {
-          final orders = await _repository.getMerchantOrders();
-          
-          if (!mounted) return;
+  final OrderRepository _repository = OrderRepository();
+  final TextEditingController _searchController = TextEditingController();
 
-          setState(() {
-            _orders = orders;
-            _isLoading = false;
-          });
-        } catch (e) {
-          if (!mounted) return;
+  bool _isLoading = true;
+  bool _isUpdating = false;
+  String? _error;
+  List<OrderModel> _orders = [];
+  int _selectedTab = 0;
+  String _searchQuery = '';
+  Timer? _autoRefreshTimer;
 
-          setState(() {
-            _error = e.toString().replaceAll('Exception: ', '');
-            _isLoading = false;
-          });
-        }
-      }
-      
-      List<OrderModel> get _filteredOrders {
-        if (_selectedTab == 0) {
-          return _orders
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      _loadOrders();
+      _autoExpireOrders();
+    });
+  }
+
+  void _reloadAndExpire() {
+    _loadOrders();
+    _autoExpireOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    try {
+      final orders = await _repository.getMerchantOrders();
+
+      if (!mounted) return;
+
+      final previousOrders = _orders;
+      setState(() {
+        _orders = orders;
+        _isLoading = false;
+        _error = null;
+      });
+
+      _notifyNewOrders(orders, previousOrders);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _notifyNewOrders(List<OrderModel> current, List<OrderModel> previous) {
+    if (previous.isEmpty) return;
+
+    final newOrders = current.where((o) =>
+        !previous.any((p) => p.id == o.id) &&
+        o.deliveryStatus == 'pending');
+
+    if (newOrders.isEmpty) return;
+
+    final count = newOrders.length;
+    NotificationService.showWithChannel(
+      id: DateTime.now().millisecondsSinceEpoch % 100000,
+      title: 'Nuevo${count > 1 ? 's' : ''} pedido${count > 1 ? 's' : ''}',
+      body: count == 1
+          ? '${newOrders.first.buyerName ?? "Un cliente"} ha realizado un pedido'
+          : '$count nuevos pedidos recibidos',
+      channelId: 'merchant_new_order',
+    );
+  }
+
+  Future<void> _autoExpireOrders() async {
+    final now = DateTime.now();
+    final pending = _orders.where((o) =>
+        o.deliveryStatus == 'pending' &&
+        o.pickupEnd != null &&
+        o.pickupEnd!.isBefore(now));
+
+    if (pending.isEmpty) return;
+
+    bool changed = false;
+    for (final order in pending) {
+      try {
+        await _repository.markAsNotPickedUp(order.id);
+        changed = true;
+      } catch (_) {}
+    }
+
+    if (changed && mounted) {
+      await _loadOrders();
+    }
+  }
+
+  List<OrderModel> get _filteredOrders {
+    List<OrderModel> result;
+
+    if (_selectedTab == 0) {
+      result = _orders
           .where((order) =>
               order.paymentStatus == 'pending' &&
               order.deliveryStatus == 'pending')
           .toList();
-        }
-
-        if (_selectedTab == 1) {
-          return _orders
+      result.sort((a, b) {
+        final aTime = a.pickupStart ?? DateTime(2100);
+        final bTime = b.pickupStart ?? DateTime(2100);
+        return aTime.compareTo(bTime);
+      });
+    } else if (_selectedTab == 1) {
+      result = _orders
           .where((order) =>
               order.paymentStatus == 'paid' ||
               order.deliveryStatus == 'delivered')
           .toList();
-       }
+      result.sort((a, b) {
+        final aTime = a.pickupStart ?? DateTime(2000);
+        final bTime = b.pickupStart ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+    } else {
+      result = _orders
+          .where((order) => order.deliveryStatus == 'not_picked_up')
+          .toList();
+      result.sort((a, b) {
+        final aTime = a.pickupStart ?? DateTime(2000);
+        final bTime = b.pickupStart ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+    }
 
-       return _orders
-        .where((order) => order.deliveryStatus == 'not_picked_up')
-        .toList();
-      }
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase().trim();
+      result = result
+          .where((o) =>
+              o.buyerName?.toLowerCase().contains(query) == true ||
+              o.buyerEmail?.toLowerCase().contains(query) == true ||
+              o.reservationCode.toLowerCase().contains(query))
+          .toList();
+    }
+
+    return result;
+  }
 
   Future<void> _markAsPaidAndDelivered(OrderModel order) async {
     final confirmed = await showDialog<bool>(
@@ -114,6 +205,63 @@ class _MerchantPendingOrdersScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pedido marcado como pagado y entregado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
+  }
+
+  Future<void> _deliverOrder(OrderModel order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar entrega'),
+        content: Text(
+          '¿Deseas marcar la reserva ${_shortCode(order.reservationCode)} como entregada?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isUpdating = true);
+
+    try {
+      await _repository.deliverOrder(order.id);
+      await _loadOrders();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pedido marcado como entregado'),
           backgroundColor: Colors.green,
         ),
       );
@@ -175,7 +323,7 @@ class _MerchantPendingOrdersScreenState
         ),
         actions: [
           IconButton(
-            onPressed: _loadOrders,
+            onPressed: _reloadAndExpire,
             icon: const Icon(
               Icons.refresh,
               color: AppColors.primary,
@@ -187,6 +335,7 @@ class _MerchantPendingOrdersScreenState
         children: [
           Column(
             children: [
+              if (_selectedTab == 0) _buildSearchBar(),
               _buildTabs(),
               Expanded(
                 child: _isLoading
@@ -200,7 +349,10 @@ class _MerchantPendingOrdersScreenState
                         : orders.isEmpty
                             ? _buildEmpty()
                             : RefreshIndicator(
-                                onRefresh: _loadOrders,
+                                onRefresh: () async {
+                                  await _loadOrders();
+                                  await _autoExpireOrders();
+                                },
                                 child: ListView.builder(
                                   padding: const EdgeInsets.all(16),
                                   itemCount: orders.length,
@@ -220,6 +372,9 @@ class _MerchantPendingOrdersScreenState
                                                     order,
                                                   )
                                               : null,
+                                      onDeliver: order.canBeDelivered
+                                          ? () => _deliverOrder(order)
+                                          : null,
                                     );
                                   },
                                 ),
@@ -237,6 +392,36 @@ class _MerchantPendingOrdersScreenState
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Buscar por nombre o código...',
+          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.grey[200],
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
       ),
     );
   }
@@ -305,7 +490,7 @@ class _MerchantPendingOrdersScreenState
             ),
             const SizedBox(height: 14),
             ElevatedButton(
-              onPressed: _loadOrders,
+              onPressed: _reloadAndExpire,
               child: const Text('Reintentar'),
             ),
           ],
@@ -340,18 +525,18 @@ class _MerchantOrderCard extends StatelessWidget {
   final String code;
   final String pickupText;
   final VoidCallback? onMarkPaidDelivered;
+  final VoidCallback? onDeliver;
 
   const _MerchantOrderCard({
     required this.order,
     required this.code,
     required this.pickupText,
     required this.onMarkPaidDelivered,
+    required this.onDeliver,
   });
 
   @override
   Widget build(BuildContext context) {
-    final canComplete = onMarkPaidDelivered != null;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -457,24 +642,44 @@ class _MerchantOrderCard extends StatelessWidget {
               ),
             ],
           ),
-          if (canComplete) ...[
+          if (onMarkPaidDelivered != null || onDeliver != null) ...[
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton.icon(
-                onPressed: onMarkPaidDelivered,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Marcar pagado y entregado'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (onMarkPaidDelivered != null)
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: onMarkPaidDelivered,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Marcar pagado y entregado'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
+            if (onDeliver != null) ...[
+              if (onMarkPaidDelivered != null) const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: onDeliver,
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  label: const Text('Marcar entregado'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),

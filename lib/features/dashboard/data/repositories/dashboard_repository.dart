@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dart';
-import '../models/oferta_model.dart' hide CategoryModel;
+import '../models/oferta_model.dart';
 import '../../../home/data/models/product_model.dart';
 
 class DashboardRepository {
@@ -23,47 +23,50 @@ class DashboardRepository {
   Future<int> getCommerceIdInt() async {
     String? id = await _getCommerceId();
     if (id == null) {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      if (token != null) {
-        try {
-          final response = await http.get(
-            Uri.parse('$baseUrl/auth/me'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          );
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            if (data['commerce'] != null) {
-              id = data['commerce']['id']?.toString();
-              if (id != null) {
-                await prefs.setString(_commerceIdKey, id);
-              }
-            } else {
-              if (data['user'] != null && data['user']['role'] != 'merchant') {
-                throw Exception('No eres un comerciante');
-              }
-            }
-          }
-        } catch (e) {
-          if (e is http.ClientException || e.toString().contains('SocketException')) {
-            throw Exception('Error de conexión. Verifica tu internet.');
-          }
-          if (e is FormatException) {
-            throw Exception('Error al procesar la respuesta del servidor.');
-          }
-          await prefs.remove(_tokenKey);
-          await prefs.remove(_commerceIdKey);
-          throw Exception('Sesión expirada. Por favor inicia sesión de nuevo.');
-        }
-      }
+      id = await _fetchCommerceIdFromApi();
     }
     if (id == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
     final parsed = int.tryParse(id);
     if (parsed == null) throw Exception('ID de comercio inválido. Revisa SharedPreferences.');
     return parsed;
+  }
+
+  Future<String?> _fetchCommerceIdFromApi({bool clearOnAuthError = true}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    if (token == null) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['commerce'] != null) {
+          final id = data['commerce']['id']?.toString();
+          if (id != null) {
+            await prefs.setString(_commerceIdKey, id);
+          }
+          return id;
+        }
+        if (data['user'] != null && data['user']['role'] != 'merchant') {
+          throw Exception('No eres un comerciante');
+        }
+      }
+      if (response.statusCode == 401 && clearOnAuthError) {
+        await prefs.remove(_tokenKey);
+        await prefs.remove(_commerceIdKey);
+        throw Exception('Sesión expirada. Por favor inicia sesión de nuevo.');
+      }
+    } on http.ClientException {
+      throw Exception('Error de conexión. Verifica tu internet.');
+    } on FormatException {
+      throw Exception('Error al procesar la respuesta del servidor.');
+    }
+    return null;
   }
 
   Future<List<CategoryModel>> getCategorias() async {
@@ -86,29 +89,9 @@ class DashboardRepository {
     
     String? commerceId = await _getCommerceId();
     if (commerceId == null) {
-      final prefs = await SharedPreferences.getInstance();
-      try {
-        final response = await http.get(
-          Uri.parse('$baseUrl/auth/me'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data['commerce'] != null) {
-            commerceId = data['commerce']['id']?.toString();
-            if (commerceId != null) {
-              await prefs.setString(_commerceIdKey, commerceId);
-            }
-          }
-        }
-      } catch (e) {
-        throw Exception('Error al obtener comercio');
-      }
+      commerceId = await _fetchCommerceIdFromApi(clearOnAuthError: false);
     }
-    if (commerceId == null) throw Exception('No hay comercio asociado.	Inicia sesión como comerciante.');
+    if (commerceId == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
 
     final response = await http.get(
       Uri.parse('$baseUrl/commerces/$commerceId/products'),
