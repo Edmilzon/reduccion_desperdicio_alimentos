@@ -190,7 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Expanded(
           flex: 5,
-          child: VentasCard(ventas: ventas, porcentajeCambio: 0),
+          child: VentasCard(ventas: ventas),
         ),
         const SizedBox(width: 12),
         Expanded(

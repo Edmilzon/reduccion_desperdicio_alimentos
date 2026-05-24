@@ -3,17 +3,16 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 
 class VentasCard extends StatelessWidget {
   final double ventas;
-  final double porcentajeCambio;
+  final double? porcentajeCambio;
 
   const VentasCard({
     super.key,
     required this.ventas,
-    required this.porcentajeCambio,
+    this.porcentajeCambio,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = porcentajeCambio >= 0;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -47,30 +46,32 @@ class VentasCard extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(
-                isPositive ? Icons.trending_up : Icons.trending_down,
-                size: 14,
-                color: isPositive ? Colors.green : AppColors.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${isPositive ? '+' : ''}${porcentajeCambio.toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isPositive ? Colors.green : AppColors.primary,
+          if (porcentajeCambio != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  porcentajeCambio! >= 0 ? Icons.trending_up : Icons.trending_down,
+                  size: 14,
+                  color: porcentajeCambio! >= 0 ? Colors.green : AppColors.primary,
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'vs. ayer',
-                style: TextStyle(fontSize: 11, color: AppColors.textLight),
-              ),
-            ],
-          ),
+                const SizedBox(width: 4),
+                Text(
+                  '${porcentajeCambio! >= 0 ? '+' : ''}${porcentajeCambio!.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: porcentajeCambio! >= 0 ? Colors.green : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'vs. ayer',
+                  style: TextStyle(fontSize: 11, color: AppColors.textLight),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
