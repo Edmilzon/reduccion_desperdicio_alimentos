@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/widgets/payment_dialog.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/countdown_timer.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
@@ -13,7 +18,9 @@ class MyOrdersScreen extends StatefulWidget {
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final _repository = OrderRepository();
+  final _productRepo = ProductRepository();
   List<OrderModel> _orders = [];
+  Map<int, CommerceModel> _commerceMap = {};
   bool _isLoading = true;
   String? _error;
 
@@ -27,7 +34,16 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     setState(() => _isLoading = true);
     try {
       final orders = await _repository.getMyOrders();
-      if (mounted) setState(() { _orders = orders; _isLoading = false; });
+      final commerces = await _productRepo.getCommerces();
+      final map = <int, CommerceModel>{};
+      for (final c in commerces) map[c.id] = c;
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _commerceMap = map;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
     }
@@ -276,6 +292,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         itemCount: _orders.length,
         itemBuilder: (_, i) => _OrderCard(
           order: _orders[i],
+          commerce: _commerceMap[_orders[i].commerceId],
           onPay: !_orders[i].isCash && _orders[i].isPendingPayment
               ? () => _payOrder(_orders[i])
               : null,
@@ -290,13 +307,60 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
 class _OrderCard extends StatelessWidget {
   final OrderModel order;
+  final CommerceModel? commerce;
   final VoidCallback? onPay;
   final VoidCallback? onCancel;
 
-  const _OrderCard({required this.order, this.onPay, this.onCancel});
+  const _OrderCard({required this.order, this.commerce, this.onPay, this.onCancel});
+
+  void _openMaps(BuildContext context) {
+    if (commerce?.latitude == null || commerce?.longitude == null) return;
+    final url = 'https://www.google.com/maps/search/?api=1&query=${commerce!.latitude},${commerce!.longitude}';
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  void _openWaze(BuildContext context) {
+    if (commerce?.latitude == null || commerce?.longitude == null) return;
+    final url = 'https://waze.com/ul?ll=${commerce!.latitude},${commerce!.longitude}&navigate=yes';
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  void _showQrCode(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Código de recogida', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(
+              data: order.reservationCode,
+              version: QrVersions.auto,
+              size: 220,
+              backgroundColor: Colors.white,
+              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square),
+              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square),
+            ),
+            const SizedBox(height: 16),
+            Text(order.reservationCode, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 2)),
+            const SizedBox(height: 8),
+            Text('Preséntalo al recoger tu pedido en ${order.commerceName ?? 'el restaurante'}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isPending = order.deliveryStatus == 'pending';
+    final hasCoords = commerce?.latitude != null && commerce?.longitude != null;
+    final isExpired = order.pickupEnd != null && order.pickupEnd!.isBefore(DateTime.now());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -332,12 +396,17 @@ class _OrderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.qr_code, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Flexible(child: Text(order.reservationCode, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
-            ],
+          GestureDetector(
+            onTap: () => _showQrCode(context),
+            child: Row(
+              children: [
+                const Icon(Icons.qr_code, size: 14, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Flexible(child: Text(order.reservationCode, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600))),
+                const SizedBox(width: 4),
+                const Icon(Icons.zoom_in, size: 12, color: AppColors.primary),
+              ],
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -353,6 +422,113 @@ class _OrderCard extends StatelessWidget {
               ],
             ],
           ),
+          if (isPending && order.pickupEnd != null && !isExpired) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: order.pickupEnd!.difference(DateTime.now()).inMinutes <= 5
+                    ? Colors.red.withValues(alpha: 0.08)
+                    : order.pickupEnd!.difference(DateTime.now()).inMinutes <= 30
+                        ? AppColors.alertBg
+                        : AppColors.amber.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: order.pickupEnd!.difference(DateTime.now()).inMinutes <= 5
+                      ? Colors.red.withValues(alpha: 0.3)
+                      : order.pickupEnd!.difference(DateTime.now()).inMinutes <= 30
+                          ? AppColors.primary.withValues(alpha: 0.3)
+                          : AppColors.amber.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.timer,
+                    size: 16,
+                    color: order.pickupEnd!.difference(DateTime.now()).inMinutes <= 5
+                        ? Colors.red
+                        : AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tiempo para recoger',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: order.pickupEnd!.difference(DateTime.now()).inMinutes <= 5 ? Colors.red : AppColors.textSecondary,
+                          ),
+                        ),
+                        CountdownTimer(target: order.pickupEnd!, compact: true),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (isExpired && order.pickupEnd != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber, size: 16, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Tiempo de recogida vencido', style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+          if (isPending && hasCoords) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      icon: const Icon(Icons.map, size: 16),
+                      label: const Text('Maps', style: TextStyle(fontSize: 11)),
+                      onPressed: () => _openMaps(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      icon: const Icon(Icons.navigation, size: 16),
+                      label: const Text('Waze', style: TextStyle(fontSize: 11)),
+                      onPressed: () => _openWaze(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (order.isCash && !order.isPaid) ...[
             const SizedBox(height: 8),
             Container(
