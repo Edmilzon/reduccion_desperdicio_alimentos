@@ -49,18 +49,18 @@ class _CountdownTimerState extends State<CountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
+    final isUrgent = _remaining.inMinutes <= 5 && _remaining.inMinutes > 0;
+    final isWarning = _remaining.inMinutes <= 30 && _remaining.inMinutes > 0;
+
+    final color = isUrgent
+        ? Colors.red
+        : isWarning
+            ? AppColors.primary
+            : AppColors.textSecondary;
+
     final hours = _remaining.inHours;
     final minutes = _remaining.inMinutes.remainder(60);
     final seconds = _remaining.inSeconds.remainder(60);
-
-    final isUrgent = _remaining.inMinutes <= 30 && _remaining.inMinutes > 0;
-    final isCritical = _remaining.inMinutes <= 5 && _remaining.inMinutes > 0;
-
-    final color = isCritical
-        ? Colors.red
-        : isUrgent
-            ? AppColors.primary
-            : AppColors.textSecondary;
 
     final timeText = widget.compact
         ? '${hours > 0 ? '${hours}h ' : ''}${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
@@ -73,7 +73,7 @@ class _CountdownTimerState extends State<CountdownTimer> {
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Icon(
-              isCritical ? Icons.alarm : Icons.timer_outlined,
+              isUrgent ? Icons.alarm : Icons.timer_outlined,
               size: 14,
               color: color,
             ),

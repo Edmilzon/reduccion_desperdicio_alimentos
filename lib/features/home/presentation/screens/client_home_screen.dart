@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/pickup_reminder_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/menu_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/real_cart_screen.dart';
@@ -18,17 +20,21 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   int _currentIndex = 0;
   int _cartCount = 0;
+  final PickupReminderService _pickupReminder = PickupReminderService();
 
   @override
   void initState() {
     super.initState();
     _updateCartCount();
     CartRepository.notifier.addListener(_onCartChanged);
+    NotificationService.init();
+    _pickupReminder.start();
   }
 
   @override
   void dispose() {
     CartRepository.notifier.removeListener(_onCartChanged);
+    _pickupReminder.stop();
     super.dispose();
   }
 
