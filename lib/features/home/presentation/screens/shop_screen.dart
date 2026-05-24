@@ -671,21 +671,45 @@ class _ProductItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-              ),
-              child: product.imageUrl.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                      child: Image.network(product.imageUrl, fit: BoxFit.cover, width: 100, height: 100,
-                        errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+            Stack(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                  ),
+                  child: product.imageUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                          child: Image.network(product.imageUrl, fit: BoxFit.cover, width: 100, height: 100,
+                            errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+                          ),
+                        )
+                      : const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+                ),
+                if (product.isExpiringSoon)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(3),
                       ),
-                    )
-                  : const Icon(Icons.shopping_bag, size: 40, color: AppColors.primary),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer, size: 9, color: Colors.white),
+                          SizedBox(width: 2),
+                          Text('URGENTE', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             Expanded(
               child: Padding(

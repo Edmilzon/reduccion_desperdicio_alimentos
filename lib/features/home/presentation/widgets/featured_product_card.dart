@@ -72,6 +72,29 @@ class FeaturedProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (product.isExpiringSoon)
+                  Positioned(
+                    top: 44,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer, size: 11, color: Colors.white),
+                          SizedBox(width: 3),
+                          Text(
+                            'ÚLTIMA OPORTUNIDAD',
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 12,
                   right: 12,

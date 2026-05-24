@@ -48,6 +48,12 @@ class DashboardRepository {
             }
           }
         } catch (e) {
+          if (e is http.ClientException || e.toString().contains('SocketException')) {
+            throw Exception('Error de conexión. Verifica tu internet.');
+          }
+          if (e is FormatException) {
+            throw Exception('Error al procesar la respuesta del servidor.');
+          }
           await prefs.remove(_tokenKey);
           await prefs.remove(_commerceIdKey);
           throw Exception('Sesión expirada. Por favor inicia sesión de nuevo.');
@@ -206,6 +212,15 @@ class DashboardRepository {
     }
   }
 
+  String _extractError(http.Response response) {
+    try {
+      final data = jsonDecode(response.body);
+      return data['message']?.toString() ?? 'Error desconocido (${response.statusCode})';
+    } catch (_) {
+      return 'Error del servidor (${response.statusCode})';
+    }
+  }
+
   Future<void> deleteProduct(int id) async {
     final token = await _getToken();
     if (token == null) throw Exception('No hay sesión');
@@ -218,8 +233,9 @@ class DashboardRepository {
       },
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Error al eliminar producto');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final msg = _extractError(response);
+      throw Exception(msg);
     }
   }
 }

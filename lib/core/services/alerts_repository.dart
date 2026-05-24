@@ -121,8 +121,7 @@ class AlertsRepository {
 
   Future<void> _save(List<AlertModel> alerts) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _key, jsonEncode(alerts.map((a) => a.toJson()).toList()));
+    await prefs.setString(_key, jsonEncode(alerts.map((a) => a.toJson()).toList()));
   }
 }
 
