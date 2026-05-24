@@ -198,6 +198,52 @@ class OrderRepository {
     _handleOrderError(response);
   }
 
+  Future<OrderModel> deliverOrder(int orderId) async {
+    final token = await _getToken();
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/orders/$orderId/deliver'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return OrderModel.fromJson(jsonDecode(response.body));
+    }
+
+    final msg = _extractErrorRaw(response);
+    if (response.statusCode == 400) throw OrderException(msg);
+    if (response.statusCode == 401) throw OrderAuthException();
+    if (response.statusCode == 403) throw OrderException('No tienes permiso para realizar esta acción');
+    if (response.statusCode == 404) throw OrderException('Pedido no encontrado');
+    throw OrderException(msg);
+  }
+
+  Future<OrderModel> markAsNotPickedUp(int orderId) async {
+    final token = await _getToken();
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/orders/$orderId/mark-not-picked-up'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return OrderModel.fromJson(jsonDecode(response.body));
+    }
+
+    final msg = _extractErrorRaw(response);
+    if (response.statusCode == 400) throw OrderException(msg);
+    if (response.statusCode == 401) throw OrderAuthException();
+    if (response.statusCode == 403) throw OrderException('No tienes permiso para realizar esta acción');
+    if (response.statusCode == 404) throw OrderException('Pedido no encontrado');
+    throw OrderException(msg);
+  }
+
   Never _handleOrderError(http.Response response) {
     final message = _extractError(response);
 

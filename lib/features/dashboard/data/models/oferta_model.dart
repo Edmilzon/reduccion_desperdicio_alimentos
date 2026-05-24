@@ -115,26 +115,3 @@ class OfertaModel {
   DateTime get creadaEn => createdAt ?? DateTime.now();
   int get unidadesRestantes => quantity;
 }
-
-class CategoryModel {
-  final int id;
-  final String name;
-  final String slug;
-  final String? imageUrl;
-
-  CategoryModel({
-    this.id = 0,
-    this.name = '',
-    this.slug = '',
-    this.imageUrl,
-  });
-
-  factory CategoryModel.fromJson(Map<String, dynamic> json) {
-    return CategoryModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      imageUrl: json['imageUrl'],
-    );
-  }
-}

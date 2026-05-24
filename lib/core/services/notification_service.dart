@@ -49,10 +49,57 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(geofenceChannel);
 
+    const merchantOrderChannel = AndroidNotificationChannel(
+      'merchant_new_order',
+      'Nuevos pedidos',
+      description: 'Notificaciones cuando llega un nuevo pedido',
+      importance: Importance.high,
+    );
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(merchantOrderChannel);
+
     _initialized = true;
   }
 
   static void _onNotificationTap(NotificationResponse response) {}
+
+  static Future<void> showWithChannel({
+    required int id,
+    required String title,
+    required String body,
+    required String channelId,
+    String? payload,
+  }) async {
+    final channelLabel = _channelLabels[channelId] ?? channelId;
+    final channelDesc = 'Notificaciones del canal $channelId';
+
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelLabel,
+      channelDescription: channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _plugin.show(id, title, body, details, payload: payload);
+  }
+
+  static const Map<String, String> _channelLabels = {
+    'pickup_reminder': 'Recordatorio de recogida',
+    'geofence_code': 'Cercanía al local',
+    'merchant_new_order': 'Nuevos pedidos',
+  };
 
   static Future<void> show({
     required int id,

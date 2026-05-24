@@ -98,6 +98,9 @@ class OrderModel {
   bool get canBeMarkedAsPaidAndDelivered =>
       isCash && isPendingPayment && deliveryStatus == 'pending';
 
+  bool get canBeDelivered =>
+      isPaid && deliveryStatus == 'pending';
+
   String get paymentMethodLabel {
     switch (paymentMethod) {
       case 'cash':

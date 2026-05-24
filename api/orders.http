@@ -95,6 +95,33 @@ Content-Type: application/json
 #   400 → orden cancelada
 #   404 → orden no encontrada
 
+### Marcar como entregado (solo merchant, para pedidos online ya pagados)
+PATCH {{baseURL}}/orders/{{orderId}}/deliver
+Authorization: Bearer {{token}}
+# 200 → { ...order, deliveryStatus: "delivered" }
+# Solo cambia deliveryStatus, NO paymentStatus.
+# Para pedidos con paymentMethod = "online" que ya tienen paymentStatus = "paid".
+# Errores:
+#   401 → no autenticado
+#   403 → no eres el merchant del comercio asociado
+#   400 → pedido no está pagado (paymentStatus != "paid")
+#   400 → pedido ya entregado
+#   400 → pedido cancelado o no recogido
+#   404 → pedido no encontrado
+
+### Marcar como no recogido (solo merchant, auto-expirado)
+PATCH {{baseURL}}/orders/{{orderId}}/mark-not-picked-up
+Authorization: Bearer {{token}}
+# 200 → { ...order, deliveryStatus: "not_picked_up", status: "cancelled" }
+# NO restaura stock (comida preparada/reservada no recogida)
+# Se llama automáticamente desde Timer del frontend cuando pickupEnd expira
+# Errores:
+#   401 → no autenticado
+#   403 → no eres el merchant del comercio asociado
+#   400 → pedido ya entregado o ya no recogido
+#   400 → pedido cancelado
+#   404 → pedido no encontrado
+
 ### Cancelar pedido (restaura stock, si estaba SOLD_OUT vuelve a ACTIVE)
 PATCH {{baseURL}}/orders/{{orderId}}/cancel
 Authorization: Bearer {{token}}
