@@ -4,6 +4,8 @@ import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/favorites_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/alerts_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/merchant_pending_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
@@ -210,7 +212,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.favorite,
                 title: 'Favoritos',
                 subtitle: 'Productos guardados',
-                onTap: () {},
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+                ),
               ),
               const SizedBox(height: 8),
               _buildMenuItem(
@@ -224,7 +229,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.notifications,
                 title: 'Notificaciones',
                 subtitle: 'Configurar alertas',
-                onTap: () {},
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AlertsScreen()),
+                ),
               ),
             ],
             const SizedBox(height: 8),

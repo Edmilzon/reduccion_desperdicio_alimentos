@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/favorites_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/price_cache_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/alerts_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/countdown_timer.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -16,10 +20,16 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final ProductRepository _repository = ProductRepository();
   final CartRepository _cartRepo = CartRepository();
+  final FavoritesRepository _favoritesRepo = FavoritesRepository();
+  final PriceCacheRepository _priceCacheRepo = PriceCacheRepository();
+  final AlertsRepository _alertsRepo = AlertsRepository();
   ProductModel? _product;
   bool _isLoading = true;
   String? _error;
   int _quantity = 1;
+  bool _isFavorite = false;
+  bool _priceDropped = false;
+  double? _previousPrice;
 
   @override
   void initState() {
@@ -34,8 +44,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
     try {
       final product = await _repository.getProductById(widget.productId);
+      final favoriteIds = await _favoritesRepo.getFavorites();
+      final cachedPrice = await _priceCacheRepo.getLastPrice(widget.productId);
+      final dropped = cachedPrice != null && product.price < cachedPrice;
+      await _priceCacheRepo.updatePrice(widget.productId, product.price);
+      if (dropped && product.isExpiringSoon) {
+        _alertsRepo.addAlert(
+          type: 'bajo_precio',
+          productId: product.id,
+          title: '¡Precio bajó!',
+          message: '${product.title} ahora está a \$${product.price.toStringAsFixed(2)}',
+        );
+      }
       setState(() {
         _product = product;
+        _isFavorite = favoriteIds.contains(widget.productId);
+        _priceDropped = dropped;
+        _previousPrice = cachedPrice;
         _quantity = 1;
         _isLoading = false;
       });
@@ -45,6 +70,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isFavorite) {
+      await _favoritesRepo.removeFavorite(widget.productId);
+    } else {
+      await _favoritesRepo.addFavorite(widget.productId);
+    }
+    setState(() => _isFavorite = !_isFavorite);
   }
 
   @override
@@ -85,6 +119,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           elevation: 0,
           pinned: true,
           expandedHeight: 300,
+          actions: [
+            IconButton(
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.red : Colors.white,
+                size: 28,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+          ],
           flexibleSpace: FlexibleSpaceBar(
             background: Stack(
               fit: StackFit.expand,
@@ -193,6 +237,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 const SizedBox(height: 24),
                 _buildPickupSection(p),
                 const SizedBox(height: 24),
+                if (p.isExpiringSoon) _buildCountdownSection(p),
+                if (p.isExpiringSoon) const SizedBox(height: 24),
                 _buildInfoSection(p),
                 const SizedBox(height: 24),
                 _buildQuantitySelector(p),
@@ -296,61 +342,87 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          if (_priceDropped)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.trending_down, size: 16, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '¡Precio reducido! Antes \$${_previousPrice?.toStringAsFixed(2) ?? ''}',
+                      style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
             children: [
-              const Text(
-                'Precio Oferta',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Precio Oferta',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${p.price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                '\$${p.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Precio Regular',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${p.originalPrice.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[400],
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Precio Regular',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '\$${p.originalPrice.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey[400],
-                  decoration: TextDecoration.lineThrough,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                'Ahorro',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '\$${(p.originalPrice - p.price).toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secondary,
-                ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'Ahorro',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${(p.originalPrice - p.price).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -428,6 +500,52 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownSection(ProductModel p) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
+            ? Colors.red.withValues(alpha: 0.08)
+            : AppColors.alertBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
+              ? Colors.red.withValues(alpha: 0.3)
+              : AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.timer,
+            color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
+                ? Colors.red
+                : AppColors.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '¡Última oportunidad!',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                CountdownTimer(target: p.pickupEnd),
+              ],
+            ),
           ),
         ],
       ),

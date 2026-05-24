@@ -70,6 +70,29 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (product.isExpiringSoon)
+                    Positioned(
+                      top: 30,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.timer, size: 9, color: Colors.white),
+                            SizedBox(width: 2),
+                            Text(
+                              'URGENTE',
+                              style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     right: 8,

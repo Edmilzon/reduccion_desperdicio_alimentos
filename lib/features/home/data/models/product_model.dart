@@ -118,6 +118,13 @@ class ProductModel {
   }
 
   bool get isAvailable => quantity > 0 && status == 'active';
+
+  bool get isExpiringSoon {
+    final diff = pickupEnd.difference(DateTime.now());
+    return isAvailable && diff.inMinutes <= 30 && diff.inMinutes > 0;
+  }
+
+  bool get isExpired => pickupEnd.isBefore(DateTime.now());
 }
 
 class CommerceModel {

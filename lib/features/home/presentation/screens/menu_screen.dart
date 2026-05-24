@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/services/favorites_repository.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
 import '../widgets/featured_product_card.dart';
 import '../widgets/product_card.dart';
+import 'favorites_screen.dart';
 import 'product_detail_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -15,15 +17,40 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   final ProductRepository _repository = ProductRepository();
+  final FavoritesRepository _favoritesRepo = FavoritesRepository();
   List<ProductModel> _products = [];
   bool _isLoading = true;
   String? _error;
   int? _expandedIndex;
+  int _expiringFavoritesCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _checkExpiringFavorites();
+    FavoritesRepository.notifier.addListener(_onFavoritesChanged);
+  }
+
+  @override
+  void dispose() {
+    FavoritesRepository.notifier.removeListener(_onFavoritesChanged);
+    super.dispose();
+  }
+
+  void _onFavoritesChanged() {
+    _checkExpiringFavorites();
+  }
+
+  Future<void> _checkExpiringFavorites() async {
+    final ids = await _favoritesRepo.getFavorites();
+    if (ids.isEmpty) {
+      if (mounted) setState(() => _expiringFavoritesCount = 0);
+      return;
+    }
+    final all = await _repository.getAllProducts();
+    final count = all.where((p) => ids.contains(p.id) && p.isExpiringSoon).length;
+    if (mounted) setState(() => _expiringFavoritesCount = count);
   }
 
   Future<void> _loadProducts() async {
@@ -79,6 +106,46 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_expiringFavoritesCount > 0)
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF6B35), Color(0xFFFF8F65)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.timer, color: Colors.white, size: 22),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '¡Ofertas por expirar!',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  Text(
+                                    '$_expiringFavoritesCount oferta${_expiringFavoritesCount == 1 ? '' : 's'} en favoritos por terminar',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
                   const Text(
                     'Oferta del Día',
                     style: TextStyle(
