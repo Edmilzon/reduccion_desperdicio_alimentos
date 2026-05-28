@@ -3,8 +3,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/location_service.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/features/map/data/filter_store.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/data/map_api_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/presentation/map_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/map/presentation/widgets/filter_panel.dart';
 import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/presentation/screens/restaurant_detail_screen.dart';
 import '../widgets/nearby_restaurant_card.dart';
 
@@ -30,6 +32,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
   final LocationService _locationService = LocationService();
   final MapApiService _mapApiService = MapApiService();
   final MapController _mapController = MapController();
+  final FilterStore _filters = FilterStore.instance;
 
   bool _isLoading = false;
   bool _isLoadingList = false;
@@ -118,7 +121,12 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     }
 
     try {
-      final commerces = await _mapApiService.getNearbyCommerces(lat, lng);
+      final commerces = await _mapApiService.getNearbyCommerces(
+        lat,
+        lng,
+        radiusKm: _filters.radius,
+        category: _filters.categorySlug,
+      );
 
       if (!mounted) return;
 
@@ -328,9 +336,17 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
   void initState() {
     super.initState();
     _applyCachedData();
+    _filters.addListener(_onFiltersChanged);
+    if (_filters.activeCategories.isEmpty) {
+      _filters.fetchActiveCategories();
+    }
     if (widget.isTabActive) {
       _loadNearbyCommerces();
     }
+  }
+
+  void _onFiltersChanged() {
+    if (mounted) _loadNearbyCommerces();
   }
 
   @override
@@ -348,6 +364,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
 
   @override
   void dispose() {
+    _filters.removeListener(_onFiltersChanged);
     _mapController.dispose();
     super.dispose();
   }
@@ -384,24 +401,38 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     }
 
     if (_commerces.isEmpty) {
+      final hasFilters = _filters.hasFilters;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.store_outlined,
-                  size: 48, color: AppColors.textSecondary),
+              Icon(
+                hasFilters ? Icons.filter_alt_off : Icons.store_outlined,
+                size: 48,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(height: 12),
               Text(
-                _error ?? 'No se encontraron locales',
+                hasFilters
+                    ? 'Ningún local coincide con los filtros aplicados'
+                    : (_error ?? 'No se encontraron locales'),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadNearbyCommerces,
-                child: const Text('Reintentar'),
-              ),
+              if (hasFilters)
+                ElevatedButton(
+                  onPressed: () {
+                    _filters.clearFilters();
+                  },
+                  child: const Text('Limpiar filtros'),
+                )
+              else
+                ElevatedButton(
+                  onPressed: _loadNearbyCommerces,
+                  child: const Text('Reintentar'),
+                ),
             ],
           ),
         ),
@@ -417,6 +448,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildMapSection()),
+              SliverToBoxAdapter(child: _buildFilterBar()),
               if (_error != null && !_isLoading)
                 SliverToBoxAdapter(
                   child: Container(
@@ -467,6 +499,171 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
             child: LinearProgressIndicator(color: AppColors.primary),
           ),
       ],
+    );
+  }
+
+  // ── Barra de filtros activos ──────────────────────────────────
+  Widget _buildFilterBar() {
+    final int count = _filters.activeCount;
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          // Botón de filtros con badge
+          GestureDetector(
+            onTap: () async {
+              final applied = await showFilterPanel(context);
+              if (applied == true && mounted) {
+                _loadNearbyCommerces();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: count > 0
+                    ? AppColors.primary
+                    : AppColors.cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: count > 0
+                      ? AppColors.primary
+                      : Colors.grey.shade300,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tune,
+                    size: 15,
+                    color: count > 0 ? Colors.white : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Filtros',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: count > 0
+                          ? Colors.white
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  if (count > 0) ...[
+                    const SizedBox(width: 5),
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Chips activos
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (_filters.radius > 0)
+                    _ActiveFilterChip(
+                      label: '${_filters.radius.toStringAsFixed(0)} km',
+                      onRemove: () {
+                        _filters.setRadius(0);
+                      },
+                    ),
+                  if (_filters.selectedCategory != null)
+                    _ActiveFilterChip(
+                      label: _filters.selectedCategory!.name,
+                      onRemove: () {
+                        _filters.setSelectedCategory(null);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Limpiar todos
+          if (count > 0)
+            GestureDetector(
+              onTap: () => _filters.clearFilters(),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Text(
+                  'Limpiar',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip de filtro activo con botón X para eliminarlo individualmente.
+class _ActiveFilterChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onRemove;
+
+  const _ActiveFilterChip({
+    required this.label,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(
+              Icons.close,
+              size: 13,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

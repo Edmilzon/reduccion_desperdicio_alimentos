@@ -67,10 +67,14 @@ class MapApiService {
     double lat,
     double lng, {
     double radiusKm = 0,
+    String? category,
   }) async {
-    final uri = Uri.parse(
-      '$baseUrl/commerces/nearby?lat=$lat&lng=$lng&radius=$radiusKm',
-    );
+    final params = StringBuffer();
+    params.write('lat=$lat&lng=$lng&radius=$radiusKm');
+    if (category != null && category.isNotEmpty) {
+      params.write('&category=$category');
+    }
+    final uri = Uri.parse('$baseUrl/commerces/nearby?$params');
     final response = await http
         .get(uri)
         .timeout(const Duration(seconds: 15));

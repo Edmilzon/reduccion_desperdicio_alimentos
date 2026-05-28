@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/theme/app_colors.dart';
+import '../data/filter_store.dart';
 import '../data/map_api_service.dart';
+import 'widgets/filter_panel.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -16,6 +19,7 @@ class _MapScreenState extends State<MapScreen> {
   final MapApiService _mapApiService = MapApiService();
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
+  final FilterStore _filters = FilterStore.instance;
 
   List<MapCommerceModel> _commerces = [];
   LatLng _mapCenter = const LatLng(-17.423, -66.119);
@@ -28,7 +32,15 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _filters.addListener(_onFiltersChanged);
+    if (_filters.activeCategories.isEmpty) {
+      _filters.fetchActiveCategories();
+    }
     _initLocation();
+  }
+
+  void _onFiltersChanged() {
+    if (mounted) _fetchNearbyCommerces(_mapCenter);
   }
 
   void _safeMapMove(LatLng center, double zoom) {
@@ -82,7 +94,11 @@ class _MapScreenState extends State<MapScreen> {
     setState(() => _isLoading = true);
     try {
       final results = await _mapApiService.getNearbyCommerces(
-          location.latitude, location.longitude);
+        location.latitude,
+        location.longitude,
+        radiusKm: _filters.radius,
+        category: _filters.categorySlug,
+      );
       setState(() {
         _commerces = results;
         _errorMessage = null;
@@ -257,7 +273,16 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void dispose() {
+    _filters.removeListener(_onFiltersChanged);
+    _mapController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final int filterCount = _filters.activeCount;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Restaurantes Cercanos'),
@@ -440,10 +465,40 @@ class _MapScreenState extends State<MapScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _initLocation,
-        child: const Icon(Icons.my_location),
-        tooltip: 'Mi ubicación',
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // FAB Filtros
+          FloatingActionButton(
+            heroTag: 'filter_fab',
+            onPressed: () async {
+              final applied = await showFilterPanel(context);
+              if (applied == true && mounted) {
+                _fetchNearbyCommerces(_currentLocation ?? _mapCenter);
+              }
+            },
+            backgroundColor:
+                filterCount > 0 ? AppColors.primary : Colors.white,
+            foregroundColor:
+                filterCount > 0 ? Colors.white : AppColors.primary,
+            tooltip: 'Filtros',
+            child: Badge(
+              isLabelVisible: filterCount > 0,
+              label: Text('$filterCount'),
+              backgroundColor: Colors.white,
+              textColor: AppColors.primary,
+              child: const Icon(Icons.tune),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // FAB Mi ubicación
+          FloatingActionButton(
+            heroTag: 'location_fab',
+            onPressed: _initLocation,
+            tooltip: 'Mi ubicación',
+            child: const Icon(Icons.my_location),
+          ),
+        ],
       ),
     );
   }
