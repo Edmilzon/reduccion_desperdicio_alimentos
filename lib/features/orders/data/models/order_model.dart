@@ -11,6 +11,7 @@ class OrderModel {
 
   final DateTime? createdAt;
   final DateTime? paidAt;
+  final DateTime? deliveredAt;
 
   final int? productId;
   final String? productTitle;
@@ -36,6 +37,7 @@ class OrderModel {
     required this.status,
     this.createdAt,
     this.paidAt,
+    this.deliveredAt,
     this.productId,
     this.productTitle,
     this.productDescription,
@@ -66,6 +68,7 @@ class OrderModel {
 
       createdAt: _toDate(json['createdAt']),
       paidAt: _toDate(json['paidAt']),
+      deliveredAt: _toDate(json['deliveredAt']),
 
       productId: _toNullableInt(product?['id']),
       productTitle: product?['title']?.toString(),

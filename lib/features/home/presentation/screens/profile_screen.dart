@@ -9,6 +9,7 @@ import 'package:reduccion_desperdicio_alimentos/features/home/presentation/scree
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/merchant_pending_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/validate_pickup_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isMerchant;
@@ -200,6 +201,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                },
              ),
+             const SizedBox(height: 8),
+             _buildMenuItem(
+              icon: Icons.qr_code_scanner,
+              title: 'Validar entrega',
+              subtitle: 'Confirmar recogida con código',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ValidatePickupScreen(),
+                  ),
+                );
+              },
+            ),
             ] else ...[
               _buildMenuItem(
                 icon: Icons.shopping_bag,

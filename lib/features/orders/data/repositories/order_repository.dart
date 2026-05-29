@@ -5,6 +5,7 @@ import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dar
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/order_model.dart';
+import '../models/pickup_validation_result.dart';
 
 class OrderRepository {
   static const String baseUrl = ApiConstants.baseUrl;
@@ -243,6 +244,49 @@ class OrderRepository {
     if (response.statusCode == 404) throw OrderException('Pedido no encontrado');
     throw OrderException(msg);
   }
+
+  Future<PickupValidationResult> validatePickup({
+  required String reservationCode,
+}) async {
+  final token = await _getToken();
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/orders/validate-pickup'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'reservationCode': reservationCode.trim(),
+    }),
+  );
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    return PickupValidationResult.fromJson(jsonDecode(response.body));
+  }
+
+  final message = _extractErrorRaw(response);
+
+  if (response.statusCode == 400) {
+    throw OrderException(message);
+  }
+
+  if (response.statusCode == 401) {
+    throw OrderAuthException();
+  }
+
+  if (response.statusCode == 403) {
+    throw OrderException('No tienes permiso para validar este pedido');
+  }
+
+  if (response.statusCode == 404) {
+    throw OrderException(
+      message.isEmpty ? 'Código inválido' : message,
+    );
+  }
+
+  throw OrderException(message);
+}
 
   Never _handleOrderError(http.Response response) {
     final message = _extractError(response);
