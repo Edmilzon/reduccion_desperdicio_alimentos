@@ -25,7 +25,6 @@ class AppRoutes {
           builder: (_) => CommerceAccessScreen(
             ownerName: args?['ownerName'] ?? '',
             commerceName: args?['commerceName'] ?? '',
-            phone: args?['phone'] ?? '',
             nit: args?['nit'] ?? '',
             description: args?['description'] ?? '',
             latitude: args?['latitude'] as double?,

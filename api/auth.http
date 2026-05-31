@@ -1,4 +1,4 @@
-@baseURL = http://localhost:5000
+@baseURL = https://reduccion-desperdicio-backend.vercel.app
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJlbWFpbCI6ImNsaWVudGVAZWplbXBsby5jb20iLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzgwMjQzNTQ5LCJleHAiOjE3ODAzMjk5NDl9.R6-AegrQfTZBm11gv3Kfy_Dr4OBKvSZrtp-EjKM9DHU
 @clientPassword = password123
 
@@ -50,9 +50,9 @@ POST {{baseURL}}/auth/register
 Content-Type: application/json
 
 {
-  "name": "Roberto Quispe",
-  "email": "{{clientEmail}}",
-  "password": "{{clientPassword}}"
+  "name": "Ariel",
+  "email": "ariel@gmail.com",
+  "password": "Edmilzon_890"
 }
 # 201 → { user: { id, email, role, name }, access_token }
 # Errores:

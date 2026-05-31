@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/quantity_button.dart';
 
 class RealCartScreen extends StatefulWidget {
@@ -192,7 +193,7 @@ class _RealCartScreenState extends State<RealCartScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: _isCheckingOut ? null : () => _processCheckout(),
+                onPressed: _isCheckingOut ? null : () => _showPaymentMethodDialog(),
                 child: _isCheckingOut
                     ? const SizedBox(
                         width: 22,
@@ -244,7 +245,53 @@ class _RealCartScreenState extends State<RealCartScreen> {
     );
   }
 
-  Future<void> _processCheckout() async {
+  void _showPaymentMethodDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Método de pago', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Elige cómo quieres pagar tu reserva:'),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.qr_code, color: Colors.white),
+              label: const Text('Pagar con QR', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _processCheckout('online');
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              icon: const Icon(Icons.money, color: AppColors.darkBrown),
+              label: const Text('Efectivo', style: TextStyle(color: AppColors.darkBrown, fontSize: 15, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _processCheckout('cash');
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _processCheckout(String paymentMethod) async {
     setState(() => _isCheckingOut = true);
 
     final List<_OrderResult> results = [];
@@ -254,7 +301,7 @@ class _RealCartScreenState extends State<RealCartScreen> {
         final order = await _orderRepo.createOrder(
           productId: item.productId,
           quantity: item.quantity,
-          paymentMethod: 'cash',
+          paymentMethod: paymentMethod,
         );
         results.add(_OrderResult(
           item: item,
@@ -287,10 +334,10 @@ class _RealCartScreenState extends State<RealCartScreen> {
 
     if (!mounted) return;
     _loadCart();
-    _showCheckoutResultDialog(succeeded, failed);
+    _showCheckoutResultDialog(succeeded, failed, paymentMethod);
   }
 
-  void _showCheckoutResultDialog(List<_OrderResult> succeeded, List<_OrderResult> failed) {
+  void _showCheckoutResultDialog(List<_OrderResult> succeeded, List<_OrderResult> failed, String paymentMethod) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -320,21 +367,29 @@ class _RealCartScreenState extends State<RealCartScreen> {
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.amber.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    color: paymentMethod == 'cash'
+                        ? AppColors.amber.withValues(alpha: 0.1)
+                        : AppColors.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.money, size: 20, color: AppColors.darkBrown),
-                      SizedBox(width: 8),
+                      Icon(
+                        paymentMethod == 'cash' ? Icons.money : Icons.qr_code,
+                        size: 18,
+                        color: paymentMethod == 'cash' ? AppColors.darkBrown : AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Paga en efectivo al recoger tu pedido.',
+                          paymentMethod == 'cash'
+                              ? 'Paga en efectivo al recoger.'
+                              : 'Paga con QR desde Mis Pedidos.',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.darkBrown,
+                            fontSize: 12,
+                            color: paymentMethod == 'cash' ? AppColors.darkBrown : AppColors.textPrimary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -376,7 +431,11 @@ class _RealCartScreenState extends State<RealCartScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              final nav = Navigator.of(context);
+              Navigator.pop(ctx);
+              nav.push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
+            },
             child: const Text('Aceptar'),
           ),
         ],
