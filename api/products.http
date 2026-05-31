@@ -1,4 +1,4 @@
-@baseURL = https://reduccion-desperdicio-backend.vercel.app/
+@baseURL = http://localhost:5000
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIwLCJlbWFpbCI6ImNvbWVyY2lhbnRlX3Rlc3RfMTc3OTQ4ODYwNEB0ZXN0LmNvbSIsInJvbGUiOiJtZXJjaGFudCIsImlhdCI6MTc3OTQ4ODYwOCwiZXhwIjoxNzc5NTc1MDA4fQ.yENiTVhCTwsrnAsoAeR9144iGJPsPkKjS3u66hX9XW0
 @commerceId = 1
 @productId = 1
@@ -10,61 +10,79 @@
 #
 # ENDPOINTS PÚBLICOS (GET):
 #   • GET /products      → activos (filtros: categoryId, commerceId)
-#   • GET /products/all  → todos con categoría (sin filtrar active)
+#   • GET /products/all  → todos (sin filtrar active) con categoría
 #   • GET /products/search?q= → ILIKE en title, description, commerce.name
-#   • GET /products/categories → lista de categorías
+#   • GET /products/categories → todas las categorías
 #   • GET /products/category/:categoryId → por categoría (query: commerceId)
 #   • GET /products/commerce/:commerceId → por comercio (query: status, categoryId)
-#   • GET /products/:id → un producto
+#   • GET /products/:id → un producto (con owner del commerce)
 #
-# ENDPOINTS PROTEGIDOS (requieren JWT):
-#   • POST   /products     → crear (solo owner del commerceId)
-#   • PATCH  /products/:id → actualizar (solo owner del comercio)
-#   • DELETE /products/:id → soft delete → status = SOLD_OUT (solo owner)
-#
-# ENDPOINT PROTEGIDO (owner o admin):
-#   • GET /products/commerce/:commerceId/stats → estadísticas del comercio
+# ENDPOINTS PROTEGIDOS (JWT):
+#   • POST   /products                     → crear (solo owner del commerceId)
+#   • PATCH  /products/:id                 → actualizar (solo owner)
+#   • DELETE /products/:id                 → soft delete (status = SOLD_OUT)
+#   • GET /products/commerce/:commerceId/stats → panel (owner o admin)
 #
 # ────────────────────────────────────────────
 
-### Listar productos activos (filtros opcionales: categoryId, commerceId)
+### Listar productos activos (filtros: categoryId, commerceId)
 GET {{baseURL}}/products
 # 200 → [ { id, title, description, originalPrice, price, quantity, imageUrl,
-#           pickupStart, pickupEnd, status, commerce: { id, name },
-#           category: { id, name }, location: { id, name } | null } ]
+#           pickupStart, pickupEnd, status, createdAt, updatedAt,
+#           commerce: { id, name, description, latitude, longitude, rating,
+#                      imageUrl, nit, createdAt, updatedAt,
+#                      owner: { id, email, role } },
+#           category: { id, name, slug, createdAt, updatedAt } } ]
+# Nota: NO incluye location (relación no cargada)
+# Query opcional: ?categoryId=1&commerceId=1
 
 ### Listar todos los productos con categoría (incluye no activos)
 GET {{baseURL}}/products/all
-# 200 → [ { id, title, status, price, quantity, category: { id, name }, ... } ]
+# 200 → [ { id, title, description, originalPrice, price, quantity, imageUrl,
+#           pickupStart, pickupEnd, status, createdAt, updatedAt,
+#           category: { id, name, slug, createdAt, updatedAt } } ]
+# Nota: Solo carga relación category (sin commerce ni location)
 
 ### Buscar productos por título, descripción o nombre del comercio
 GET {{baseURL}}/products/search?q=pan
-# 200 → [ { id, title, description, price, commerce: { id, name }, ... } ]
-# Búsqueda case-insensitive con ILIKE
+# 200 → [ { id, title, description, originalPrice, price, quantity, imageUrl,
+#           pickupStart, pickupEnd, status, createdAt, updatedAt,
+#           commerce: { id, name, ... },
+#           category: { id, name, slug, ... } } ]
+# Búsqueda case-insensitive con ILIKE, solo status = active
 
 ### Listar todas las categorías
 GET {{baseURL}}/products/categories
-# 200 → [ { id, name, slug } ]
+# 200 → [ { id, name, slug, createdAt, updatedAt } ]
 
-### Productos por categoría (query opcional: commerceId para filtrar)
+### Productos por categoría (query opcional: commerceId)
 GET {{baseURL}}/products/category/{{categoryId}}
-# 200 → [ { id, title, price, quantity, commerce: { id, name }, ... } ]
+# 200 → [ { id, title, description, originalPrice, price, quantity, imageUrl,
+#           pickupStart, pickupEnd, status, createdAt, updatedAt,
+#           commerce: { id, name, ... },
+#           category: { id, name, slug, ... } } ]
 # Query opcional: ?commerceId=1
 
 ### Productos por comercio (query opcional: status, categoryId)
 GET {{baseURL}}/products/commerce/{{commerceId}}
 # 200 → [ { id, title, description, originalPrice, price, quantity, imageUrl,
 #           pickupStart, pickupEnd, status, isNearExpiry (bool),
-#           category: { id, name }, location: { id, name } | null } ]
+#           createdAt, updatedAt,
+#           commerce: { id, name, ... },
+#           category: { id, name, slug, ... } } ]
 # Query opcional: ?status=active&categoryId=1
 # isNearExpiry = true si faltan < 2h para pickup_end
+# Si status no se envía o es inválido, filtra por active por defecto
 
-### Estadísticas del comercio (requiere auth, owner o admin)
+### Estadísticas del comercio (requiere JWT, owner o admin)
 GET {{baseURL}}/products/commerce/{{commerceId}}/stats
 Authorization: Bearer {{token}}
-# 200 → { activeOffers, todayOffers, todayOrders, todaySales (suma total),
-#         totalUnitsSold, nearExpiryOffers: [ { id, title, quantity,
-#           pickupEnd, timeLeft (minutos) } ], nearExpiryCount }
+# 200 → { activeOffers (count), todayOffers (count),
+#         todayOrders (count), todaySales (number),
+#         totalUnitsSold (number),
+#         nearExpiryOffers: [ { id, title, quantity, pickupEnd, price } ],
+#         nearExpiryCount }
+# nearExpiry = productos activos con pickupEnd < 2h desde ahora
 # Errores:
 #   401 → no autenticado
 #   403 → no eres owner ni admin
@@ -72,13 +90,16 @@ Authorization: Bearer {{token}}
 ### Obtener producto por ID
 GET {{baseURL}}/products/{{productId}}
 # 200 → { id, title, description, originalPrice, price, quantity, imageUrl,
-#         pickupStart, pickupEnd, status, commerce: { id, name, rating },
-#         category: { id, name, slug }, location: { id, name } | null,
-#         createdAt, updatedAt }
+#         pickupStart, pickupEnd, status, createdAt, updatedAt,
+#         commerce: { id, name, description, latitude, longitude, rating,
+#                    imageUrl, nit, createdAt, updatedAt,
+#                    owner: { id, email, role } },
+#         category: { id, name, slug, createdAt, updatedAt } }
+# Nota: NO incluye location (relación no cargada)
 # Errores:
 #   404 → producto no encontrado
 
-### Crear producto (requiere auth, solo owner del comercio)
+### Crear producto (requiere JWT, solo owner del comercio)
 POST {{baseURL}}/products
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -95,14 +116,17 @@ Content-Type: application/json
   "categoryId": 1,
   "imageUrl": "https://ejemplo.com/imagen.jpg"
 }
-# 201 → { id, title, ..., status: "active", createdAt, updatedAt }
+# 201 → { id, title, description, originalPrice, price, quantity, imageUrl,
+#         pickupStart, pickupEnd, status: "active", createdAt, updatedAt,
+#         commerce: { id, name, ... },
+#         category: { id, name, ... } | null }
 # Errores:
 #   401 → no autenticado
 #   403 → no eres owner de ese commerceId
 #   404 → commerceId no encontrado
 #   400 → validación (pickupEnd > pickupStart, precios >= 0, etc.)
 
-### Actualizar producto (requiere auth, solo owner del comercio)
+### Actualizar producto (requiere JWT, solo owner del comercio)
 PATCH {{baseURL}}/products/{{productId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -112,7 +136,7 @@ Content-Type: application/json
   "price": 4.00,
   "quantity": 15
 }
-# 200 → product object actualizado
+# 200 → full product entity actualizado
 # Errores:
 #   401 → no autenticado
 #   403 → no eres owner del comercio
@@ -121,7 +145,7 @@ Content-Type: application/json
 ### Eliminar producto (soft delete → status SOLD_OUT, solo owner)
 DELETE {{baseURL}}/products/{{productId}}
 Authorization: Bearer {{token}}
-# 200 → { message: "Producto marcado como agotado" }
+# 200 → full product entity con status: "sold_out" (NO es un mensaje)
 # No elimina físicamente, cambia status a "sold_out"
 # Errores:
 #   401 → no autenticado

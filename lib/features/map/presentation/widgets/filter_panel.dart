@@ -38,7 +38,7 @@ class _FilterPanelState extends State<FilterPanel> {
   void _apply() {
     _store.setRadius(_tempRadius);
     _store.setSelectedCategory(_tempCategory);
-    Navigator.of(context).pop(true);
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   void _clear() {
@@ -153,7 +153,7 @@ class _FilterPanelState extends State<FilterPanel> {
               inactiveTrackColor: AppColors.primary.withValues(alpha: 0.2),
               overlayColor: AppColors.primary.withValues(alpha: 0.1),
               valueIndicatorColor: AppColors.primary,
-              showValueIndicator: ShowValueIndicator.always,
+               showValueIndicator: ShowValueIndicator.onDrag,
             ),
             child: Slider(
               value: _tempRadius,

@@ -134,9 +134,7 @@ class _MerchantPendingOrdersScreenState
       });
     } else if (_selectedTab == 1) {
       result = _orders
-          .where((order) =>
-              order.paymentStatus == 'paid' ||
-              order.deliveryStatus == 'delivered')
+          .where((order) => order.deliveryStatus == 'delivered')
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2000);
@@ -447,7 +445,11 @@ class _MerchantPendingOrdersScreenState
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => setState(() => _selectedTab = index),
+        onTap: () => setState(() {
+          _selectedTab = index;
+          _searchQuery = '';
+          _searchController.clear();
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(

@@ -1,6 +1,5 @@
-@baseURL = https://reduccion-desperdicio-backend.vercel.app/
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE4LCJlbWFpbCI6InRlc3RjbGllbnRlXzE3Nzk0ODg1MTVAdGVzdC5jb20iLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzc5NDg4NTE3LCJleHAiOjE3Nzk1NzQ5MTd9.ANFZFkVe5UIM5Ulk_crd14q3ydTLHlsGvwYoSTdwKr0
-@clientEmail = cliente@ejemplo.com
+@baseURL = http://localhost:5000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJlbWFpbCI6ImNsaWVudGVAZWplbXBsby5jb20iLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzgwMjQzNTQ5LCJleHAiOjE3ODAzMjk5NDl9.R6-AegrQfTZBm11gv3Kfy_Dr4OBKvSZrtp-EjKM9DHU
 @clientPassword = password123
 
 # ────────────────────────────────────────────
@@ -24,7 +23,23 @@
 #    GET /auth/me  (protegido)
 #    → Datos del usuario autenticado. MERCHANT incluye su comercio.
 #
-# 5. LOGOUT
+# 5. RECUPERACIÓN DE CONTRASEÑA
+#    POST /auth/forgot-password  (rate-limited)
+#    → Envía correo con token de recuperación.
+#    POST /auth/reset-password
+#    → Valida el token y cambia la contraseña.
+#
+# 6. FORGOT PASSWORD
+#    POST /auth/forgot-password
+#    → Envía correo con token de recuperación (rate-limited con ThrottlerGuard).
+#    → Anti-enumeración: siempre responde lo mismo exista o no el email.
+#
+# 6. RESET PASSWORD
+#    POST /auth/reset-password
+#    → Valida token, cambia contraseña, guarda historial, incrementa tokenVersion.
+#    → Rechaza si la nueva contraseña es igual a la actual o a alguna anterior.
+#
+# 7. LOGOUT
 #    POST /auth/logout  (protegido)
 #    → Solo indica al cliente eliminar el token local (sin estado server).
 #
@@ -83,6 +98,35 @@ Authorization: Bearer {{token}}
 # Para MERCHANT, user incluye: { commerce: { id, name, description, rating, imageUrl, ... } }
 # Errores:
 #   401 → token inválido o expirado
+
+### Solicitar recuperación de contraseña (rate-limited)
+POST {{baseURL}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{clientEmail}}"
+}
+# 200 → { message: "Si el correo está registrado, se han enviado las instrucciones..." }
+# Nota: Respuesta anti-enumeración (idéntica exista o no el email).
+# Rate-limited por ThrottlerGuard (10 requests/60s global).
+# Si el email existe: guarda resetToken (hash SHA256, 30min expira), envía correo con template forgot-password.hbs.
+
+### Restablecer contraseña con token
+POST {{baseURL}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "{{clientEmail}}",
+  "token": "token-recibido-por-correo",
+  "newPassword": "nuevaPassword123"
+}
+# 200 → { message: "Contraseña actualizada correctamente." }
+# Errores:
+#   400 → token inválido o expirado
+#   400 → nueva contraseña igual a la actual
+#   400 → nueva contraseña repetida de historial
+# Lógica: valida token, verifica historial (PasswordHistory), guarda hash anterior,
+#         actualiza password, incrementa tokenVersion, envía correo de confirmación.
 
 ### Cerrar sesión (cliente elimina token local)
 POST {{baseURL}}/auth/logout

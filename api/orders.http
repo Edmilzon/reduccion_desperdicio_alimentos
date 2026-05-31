@@ -1,4 +1,4 @@
-@baseURL = https://reduccion-desperdicio-backend.vercel.app/
+@baseURL = http://localhost:5000
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE4LCJlbWFpbCI6InRlc3RjbGllbnRlXzE3Nzk0ODg1MTVAdGVzdC5jb20iLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzc5NDg4NjA5LCJleHAiOjE3Nzk1NzUwMDl9.DVcR8PrjzOLcFKQzeK4EEAUS395M2df0Bv5ZC0etW50
 @productId = 1
 @orderId = 1
@@ -13,7 +13,7 @@
 #    POST /orders  (paymentMethod: "cash" | "online")
 #    → Decrementa stock del producto.
 #    → Si stock llega a 0, marca producto como SOLD_OUT.
-#    → Crea notificación automática para el comercio.
+#    → Crea notificación automática para el comprador.
 #
 # 2. FLUJO DE PAGO
 #
@@ -21,7 +21,7 @@
 #       → El cliente paga al recoger.
 #       → El merchant llama a PATCH /orders/:id/mark-paid-delivered
 #         para marcar como pagado y entregado en un solo paso.
-#       → NO se llama a POST /orders/:id/pay (el backend lo rechaza con 400).
+#       → NO se llama a POST /orders/:id/pay (rechaza con 400).
 #
 #    b) ONLINE / QR (paymentMethod: "online")
 #       → Backend crea la orden, devuelve reservationCode.
@@ -30,7 +30,21 @@
 #       → El frontend llama a POST /orders/:id/pay
 #         → Backend marca paymentStatus = "paid", genera receiptUrl.
 #
-# 3. CANCELAR
+# 3. VALIDAR QR (pickup)
+#    POST /orders/validate-pickup
+#    → Merchant escanea código de reserva, marca como entregado.
+#    → Si es cash, también marca como pagado.
+#
+# 4. ENTREGAR (pedido online)
+#    PATCH /orders/:id/deliver
+#    → Merchant marca como entregado un pedido online ya pagado.
+#
+# 5. NO RECOGIDO
+#    PATCH /orders/:id/mark-not-picked-up
+#    → Merchant marca pedido como no recogido (NO restaura stock).
+#    → Llama automáticamente al expirar pickupEnd (en findMyOrders/findMerchantOrders).
+#
+# 6. CANCELAR (cliente)
 #    PATCH /orders/:id/cancel
 #    → Restaura la cantidad al stock del producto.
 #    → Si el producto estaba SOLD_OUT, lo vuelve a ACTIVE.
@@ -47,39 +61,59 @@ Content-Type: application/json
   "quantity": 2,
   "paymentMethod": "online"
 }
-# 201 → { id, buyer, product: { id, title, price }, quantity, totalPrice,
-#         status, paymentMethod, paymentStatus, deliveryStatus,
-#         reservationCode, paidAt, receiptUrl, createdAt }
+# 201 → { id, reservationCode, quantity, totalPrice,
+#         paymentMethod, paymentStatus, deliveryStatus, status,
+#         paidAt, deliveredAt, createdAt,
+#         product: { id, title, description, price, imageUrl,
+#                    pickupStart, pickupEnd,
+#                    commerce: { id, name } },
+#         buyer: { id, email } }
 # El backend: decrementa stock, si llega a 0 marca SOLD_OUT, crea notificación.
 # Errores:
-#   400 → validación (quantity > 0, paymentMethod válido)
+#   400 → quantity <= 0, producto agotado, paymentMethod inválido
 #   404 → productId no encontrado
-#   409 → producto agotado (quantity = 0)
 
 ### Listar pedidos del usuario comprador (más recientes primero)
 GET {{baseURL}}/orders/my-orders
 Authorization: Bearer {{token}}
-# 200 → [ { id, product: { id, title, imageUrl }, quantity, totalPrice,
-#           paymentMethod, paymentStatus, deliveryStatus, status,
-#           reservationCode, paidAt, createdAt } ]
+# 200 → [ mismo formato que create ]
+# Nota: ejecuta markExpiredOrdersAsNotPickedUp() automáticamente
 
 ### Listar pedidos del comercio del merchant (dueño del comercio)
 GET {{baseURL}}/orders/merchant
 Authorization: Bearer {{token}}
-# 200 → [ { id, buyer: { id, email, name }, product: { id, title },
-#           quantity, totalPrice, paymentMethod, paymentStatus,
-#           deliveryStatus, status, reservationCode, createdAt } ]
+# 200 → [ mismo formato que create ]
+# Solo órdenes cuyos productos pertenecen a comercios del merchant autenticado
+# Nota: ejecuta markExpiredOrdersAsNotPickedUp() automáticamente
+
+### Validar código de reserva (merchant escanea QR)
+POST {{baseURL}}/orders/validate-pickup
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reservationCode": "RES-007"
+}
+# 200 → { message: "Entrega confirmada", order: { ...mismo formato que create } }
+# Lógica:
+#   - Busca orden por reservationCode (exacto, incluye espacios)
+#   - Verifica que el merchant sea owner del comercio del producto
+#   - Si ya entregado o cancelado, rechaza
+#   - Si es cash: marca paymentStatus=paid + paidAt
+#   - deliveryStatus → "delivered", deliveredAt → now
 # Errores:
-#   403 → el usuario no es merchant o no tiene comercios
+#   400 → código vacío, pedido cancelado, código ya utilizado
+#   404 → código inválido (también si no es su comercio, por seguridad)
 
 ### Marcar pedido como pagado y entregado (solo merchant, para pedidos cash)
 PATCH {{baseURL}}/orders/{{orderId}}/mark-paid-delivered
 Authorization: Bearer {{token}}
-# 200 → { ...order, paymentStatus: "paid", deliveryStatus: "delivered" }
+# 200 → { ...formato mapOrderResponse, paymentStatus: "paid",
+#         deliveryStatus: "delivered", paidAt, deliveredAt }
 # Errores:
 #   401 → no autenticado
 #   403 → no eres el merchant del comercio asociado
-#   400 → pedido ya pagado o ya entregado
+#   400 → no es cash, ya entregado, ya no recogido, cancelado
 #   404 → pedido no encontrado
 
 ### Confirmar pago online (solo si paymentMethod = "online")
@@ -88,44 +122,50 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {}
-# 200 → { ...order, paymentStatus: "paid", paidAt, receiptUrl }
+# 200 → raw order entity (NO mapOrderResponse): { ...todas las columnas }
+# Lógica: marca paymentStatus=paid, paidAt, genera receiptUrl
 # Errores:
-#   400 → método cash (se paga al recoger con mark-paid-delivered)
-#   400 → ya pagada
-#   400 → orden cancelada
+#   400 → método cash, ya pagada, orden cancelada
 #   404 → orden no encontrada
 
 ### Marcar como entregado (solo merchant, para pedidos online ya pagados)
 PATCH {{baseURL}}/orders/{{orderId}}/deliver
 Authorization: Bearer {{token}}
-# 200 → { ...order, deliveryStatus: "delivered" }
-# Solo cambia deliveryStatus, NO paymentStatus.
-# Para pedidos con paymentMethod = "online" que ya tienen paymentStatus = "paid".
+# 200 → { ...formato mapOrderResponse, deliveryStatus: "delivered", deliveredAt }
+# Lógica:
+#   - Solo cambia deliveryStatus → "delivered" + deliveredAt
+#   - Sirve para pedidos online que ya tienen paymentStatus = "paid"
 # Errores:
 #   401 → no autenticado
 #   403 → no eres el merchant del comercio asociado
-#   400 → pedido no está pagado (paymentStatus != "paid")
-#   400 → pedido ya entregado
-#   400 → pedido cancelado o no recogido
+#   400 → no es online, no está pagado, ya entregado, cancelado, no recogido
 #   404 → pedido no encontrado
 
-### Marcar como no recogido (solo merchant, auto-expirado)
+### Marcar como no recogido (solo merchant, pickup expirado)
 PATCH {{baseURL}}/orders/{{orderId}}/mark-not-picked-up
 Authorization: Bearer {{token}}
-# 200 → { ...order, deliveryStatus: "not_picked_up", status: "cancelled" }
-# NO restaura stock (comida preparada/reservada no recogida)
-# Se llama automáticamente desde Timer del frontend cuando pickupEnd expira
+# 200 → { ...formato mapOrderResponse, deliveryStatus: "not_picked_up",
+#         status: "cancelled" }
+# Lógica:
+#   - Cambia deliveryStatus → "not_picked_up"
+#   - Cambia status → "cancelled"
+#   - NO restaura stock (la comida fue preparada/reservada)
+#   - Frontend Timer puede llamar automáticamente cuando pickupEnd expira
+#   - markExpiredOrdersAsNotPickedUp() también lo hace internamente para cash pendientes
 # Errores:
 #   401 → no autenticado
 #   403 → no eres el merchant del comercio asociado
-#   400 → pedido ya entregado o ya no recogido
-#   400 → pedido cancelado
+#   400 → ya entregado, ya no recogido, cancelado
 #   404 → pedido no encontrado
 
-### Cancelar pedido (restaura stock, si estaba SOLD_OUT vuelve a ACTIVE)
+### Cancelar pedido (cliente, restaura stock)
 PATCH {{baseURL}}/orders/{{orderId}}/cancel
 Authorization: Bearer {{token}}
-# 200 → { ...order, status: "cancelled" }
+# 200 → raw order entity (NO mapOrderResponse): { ...todas las columnas }
+# Lógica:
+#   - Restaura product.quantity + order.quantity
+#   - Si product.status era SOLD_OUT, lo vuelve ACTIVE
+#   - Cambia order.status → "cancelled"
 # Errores:
 #   400 → orden ya cancelada
 #   404 → orden no encontrada

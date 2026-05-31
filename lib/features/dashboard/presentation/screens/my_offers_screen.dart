@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
-import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/models/oferta_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/edit_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/widgets/offer_card.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/shop_screen.dart';
 
 class MyOffersScreen extends StatefulWidget {
   final void Function(VoidCallback)? onRefreshRegistered;
@@ -21,7 +18,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _repo = DashboardRepository();
-  final _authRepo = AuthRepository();
 
   List<OfertaModel> _ofertas = [];
   bool _isLoading = true;
@@ -136,46 +132,6 @@ class _MyOffersScreenState extends State<MyOffersScreen>
                     ],
                   ),
                 ),
-    );
-  }
-
-  void _showOptionsMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.shopping_bag_outlined),
-              title: const Text('Ver como Cliente'),
-              subtitle: const Text('Ver productos y comprar'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ShopScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                navigator.pop();
-                await _authRepo.logout();
-                if (mounted) {
-                  navigator.pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 

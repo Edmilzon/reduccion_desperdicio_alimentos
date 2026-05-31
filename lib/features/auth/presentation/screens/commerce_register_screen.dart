@@ -204,20 +204,15 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
               CustomButton(
                 text: "SIGUIENTE",
                 isLoading: isLoading,
-                onPressed: () async {
+                onPressed: () {
                   if (!_formKey.currentState!.validate()) return;
 
-                  final navigator = Navigator.of(context);
-                  setState(() => isLoading = true);
-
-                  setState(() => isLoading = false);
-
-                  if (!mounted) return;
-                  navigator.push(
+                  Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => CommerceAccessScreen(
                         ownerName: ownerController.text.trim(),
                         commerceName: commerceController.text.trim(),
+                        phone: phoneController.text.trim(),
                         nit: nitController.text.trim(),
                         description: descriptionController.text.trim(),
                         latitude: _latitude,

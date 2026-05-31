@@ -8,8 +8,8 @@ class AuthRepository {
   static const String baseUrl = ApiConstants.baseUrl;
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
-  static const String _commerceIdKey = 'commerce_id';
-  static const String _commerceNameKey = 'commerce_name';
+  static const String commerceIdKey = 'commerce_id';
+  static const String commerceNameKey = 'commerce_name';
 
   Future<AuthResponse> login(String email, String password) async {
     final url = '$baseUrl/auth/login';
@@ -42,7 +42,7 @@ class AuthRepository {
       await _saveAuth(authResponse);
       if (authResponse.commerce != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_commerceIdKey, authResponse.commerce!.id);
+        await prefs.setString(commerceIdKey, authResponse.commerce!.id);
       }
       await fetchProfile();
       return authResponse;
@@ -85,6 +85,7 @@ class AuthRepository {
     required String email,
     required String password,
     required String commerceName,
+    String? phone,
     String? nit,
     String? description,
     double? latitude,
@@ -98,6 +99,7 @@ class AuthRepository {
         'email': email,
         'password': password,
         'commerceName': commerceName,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
         if (nit != null && nit.isNotEmpty) 'nit': nit,
         if (description != null && description.isNotEmpty) 'description': description,
         if (latitude != null) 'latitude': latitude,
@@ -111,7 +113,7 @@ class AuthRepository {
       await _saveAuth(authResponse);
       if (authResponse.commerce != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_commerceIdKey, authResponse.commerce!.id);
+        await prefs.setString(commerceIdKey, authResponse.commerce!.id);
       }
       final user = await fetchProfile();
       if (user == null) {
@@ -156,11 +158,11 @@ class AuthRepository {
         final prefs = await SharedPreferences.getInstance();
         final commerceId = data['commerce']['id']?.toString();
         if (commerceId != null) {
-          await prefs.setString(_commerceIdKey, commerceId);
+          await prefs.setString(commerceIdKey, commerceId);
         }
         final commerceName = data['commerce']['name']?.toString();
         if (commerceName != null) {
-          await prefs.setString(_commerceNameKey, commerceName);
+          await prefs.setString(commerceNameKey, commerceName);
         }
       }
       return user;
@@ -185,8 +187,34 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
-    await prefs.remove(_commerceIdKey);
-    await prefs.remove(_commerceNameKey);
+    await prefs.remove(commerceIdKey);
+    await prefs.remove(commerceNameKey);
+  }
+
+  Future<void> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw _parseError(response);
+    }
+  }
+
+  Future<void> resetPassword(String email, String token, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'token': token,
+        'password': newPassword,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw _parseError(response);
+    }
   }
 
   Future<bool> isLoggedIn() async {
@@ -199,14 +227,14 @@ class AuthRepository {
     await prefs.setString(_tokenKey, auth.accessToken);
     await prefs.setString(_userKey, jsonEncode(auth.user.toJson()));
     if (auth.commerce != null) {
-await prefs.setString(_commerceIdKey, auth.commerce!.id);
-        await prefs.setString(_commerceNameKey, auth.commerce!.name);
+await prefs.setString(commerceIdKey, auth.commerce!.id);
+        await prefs.setString(commerceNameKey, auth.commerce!.name);
       }
   }
 
   Future<String?> getCommerceId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_commerceIdKey);
+    return prefs.getString(commerceIdKey);
   }
 
   Exception _parseError(http.Response response) {

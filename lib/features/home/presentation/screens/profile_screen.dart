@@ -38,8 +38,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = await _authRepo.getCurrentUser();
       final prefs = await SharedPreferences.getInstance();
-      final commerceName = prefs.getString('commerce_name') ?? '';
-      final commerceId = prefs.getString('commerce_id');
+      final commerceName = prefs.getString(AuthRepository.commerceNameKey) ?? '';
+      final commerceId = prefs.getString(AuthRepository.commerceIdKey);
       if (mounted) {
         setState(() {
           _userName = user.name.isNotEmpty ? user.name : 'Usuario';

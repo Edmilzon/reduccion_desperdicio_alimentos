@@ -17,12 +17,6 @@ class RestaurantDetailController extends ChangeNotifier {
   RestaurantDetailModel? get detail => _detail;
   String get errorMessage => _errorMessage;
 
-  void loadMock(RestaurantDetailModel detail) {
-    _detail = detail;
-    _status = RestaurantDetailStatus.loaded;
-    notifyListeners();
-  }
-
   Future<void> loadDetail(int commerceId) async {
     _status = RestaurantDetailStatus.loading;
     notifyListeners();

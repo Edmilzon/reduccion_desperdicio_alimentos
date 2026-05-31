@@ -9,12 +9,10 @@ import '../widgets/offer_card.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final int commerceId;
-  final RestaurantDetailModel? mockDetail;
 
   const RestaurantDetailScreen({
     super.key,
     required this.commerceId,
-    this.mockDetail,
   });
 
   @override
@@ -31,11 +29,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
       GetRestaurantDetailUseCase(RestaurantDetailRepository()),
     );
     _controller.addListener(_onStateChange);
-    if (widget.mockDetail != null) {
-      _controller.loadMock(widget.mockDetail!);
-    } else {
-      _controller.loadDetail(widget.commerceId);
-    }
+    _controller.loadDetail(widget.commerceId);
   }
 
   void _onStateChange() {
@@ -53,12 +47,20 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     final uri = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir el mapa')),
-      );
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el mapa')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al abrir el mapa')),
+        );
+      }
     }
   }
 
@@ -200,7 +202,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
           if (!detail.hasOffers)
             _buildEmptyOffers()
           else
-            ...detail.offers.map((offer) => OfferCard(offer: offer)),
+            ...detail.offers
+                .where((o) => o.isAvailable)
+                .map((offer) => OfferCard(offer: offer)),
         ],
       ),
     );

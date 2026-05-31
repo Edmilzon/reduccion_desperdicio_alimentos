@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -27,7 +28,7 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _currentLocation;
   bool _isLoading = false;
   String? _errorMessage;
-  bool _permissionDenied = false;
+  bool _initialLocationError = false;
 
   @override
   void initState() {
@@ -61,7 +62,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _permissionDenied = false;
+      _initialLocationError = false;
     });
 
     try {
@@ -77,12 +78,13 @@ class _MapScreenState extends State<MapScreen> {
       _safeMapMove(currentLatLng, 15.0);
       await _fetchNearbyCommerces(currentLatLng);
     } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _permissionDenied = true;
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _initialLocationError = true;
+        _errorMessage = msg;
       });
       await _fetchNearbyCommerces(_mapCenter);
-      if (mounted) _showErrorDialog(_errorMessage!);
+      if (mounted) _showErrorDialog(msg);
     } finally {
       setState(() {
         _isLoading = false;
@@ -146,6 +148,15 @@ class _MapScreenState extends State<MapScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Timer? _debounceTimer;
+
+  void _debouncedFetch(LatLng center) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _fetchNearbyCommerces(center);
+    });
   }
 
   void _showErrorDialog(String message) {
@@ -244,7 +255,12 @@ class _MapScreenState extends State<MapScreen> {
                           commerce.restaurantId ?? commerce.id,
                         ) ??
                         0;
-                    if (restaurantId <= 0) return;
+                    if (restaurantId <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error: ID de restaurante inválido')),
+                      );
+                      return;
+                    }
                     Navigator.pushNamed(
                       context,
                       '/restaurant-detail',
@@ -275,6 +291,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _filters.removeListener(_onFiltersChanged);
+    _debounceTimer?.cancel();
     _mapController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -301,8 +318,7 @@ class _MapScreenState extends State<MapScreen> {
               },
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
-                  // Si el usuario movió el mapa manualmente, recargar
-                  _fetchNearbyCommerces(position.center);
+                  _debouncedFetch(position.center);
                 }
               },
             ),
@@ -420,7 +436,7 @@ class _MapScreenState extends State<MapScreen> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: _permissionDenied 
+                          hintText: _initialLocationError 
                             ? 'Ingresa tu dirección manualmente' 
                             : 'Buscar restaurante o dirección...',
                           border: InputBorder.none,
@@ -445,7 +461,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
           
           // Mensajes de error en la UI
-          if (_errorMessage != null && !_permissionDenied)
+          if (_errorMessage != null)
             Positioned(
               bottom: 80,
               left: 20,
@@ -453,7 +469,7 @@ class _MapScreenState extends State<MapScreen> {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.9),
+                  color: Colors.redAccent.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

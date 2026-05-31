@@ -270,7 +270,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
           'pickupStart': pickupStartDT.toUtc().toIso8601String(),
           'pickupEnd': pickupEndDT.toUtc().toIso8601String(),
           'categoryId': _categoriaSeleccionada!.id,
-          if (imageUrl != null) 'imageUrl': imageUrl,
+          'imageUrl': ?imageUrl,
         });
         if (mounted) {
           _showSnack('Producto actualizado exitosamente');
@@ -547,7 +547,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
                       fit: StackFit.expand,
                       children: [
                         Image.file(File(_selectedImage!.path), fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, color: AppColors.textSecondary, size: 40),
+                          errorBuilder: (_, _, _) => const Icon(Icons.image_not_supported, color: AppColors.textSecondary, size: 40),
                         ),
                         Positioned(
                           top: 8, right: 8,
@@ -573,7 +573,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
                           fit: StackFit.expand,
                           children: [
                             Image.network(_existingImageUrl!, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                              errorBuilder: (_, _, _) => _buildImagePlaceholder(),
                             ),
                             Positioned(
                               top: 8, right: 8,

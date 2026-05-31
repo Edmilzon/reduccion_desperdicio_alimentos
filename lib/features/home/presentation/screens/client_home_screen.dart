@@ -76,13 +76,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           const MenuScreen(),
           const ShopScreen(),
           const RealCartScreen(),
-          if (_currentIndex == 3)
-            const NearbyRestaurantsScreen(
-              key: ValueKey('map-tab-nearby'),
-              isTabActive: true,
-            )
-          else
-            const SizedBox.shrink(),
+          NearbyRestaurantsScreen(
+            key: const ValueKey('map-tab-nearby'),
+            isTabActive: _currentIndex == 3,
+          ),
           const ProfileScreen(),
         ],
       ),

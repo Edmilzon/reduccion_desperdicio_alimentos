@@ -159,5 +159,3 @@ class OrderModel {
     return DateTime.tryParse(value.toString());
   }
 }
-
-typedef OrderResponse = OrderModel;

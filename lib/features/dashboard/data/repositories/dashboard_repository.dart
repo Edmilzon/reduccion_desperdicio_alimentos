@@ -22,9 +22,7 @@ class DashboardRepository {
 
   Future<int> getCommerceIdInt() async {
     String? id = await _getCommerceId();
-    if (id == null) {
-      id = await _fetchCommerceIdFromApi();
-    }
+    id ??= await _fetchCommerceIdFromApi();
     if (id == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
     final parsed = int.tryParse(id);
     if (parsed == null) throw Exception('ID de comercio inválido. Revisa SharedPreferences.');
@@ -88,9 +86,7 @@ class DashboardRepository {
     if (token == null) throw Exception('No hay sesión');
     
     String? commerceId = await _getCommerceId();
-    if (commerceId == null) {
-      commerceId = await _fetchCommerceIdFromApi(clearOnAuthError: false);
-    }
+    commerceId ??= await _fetchCommerceIdFromApi(clearOnAuthError: false);
     if (commerceId == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
 
     final response = await http.get(
@@ -115,7 +111,7 @@ class DashboardRepository {
     if (token == null) throw Exception('No hay sesión');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/dashboard/commerce/$commerceId'),
+      Uri.parse('$baseUrl/products/commerce/$commerceId/stats'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -160,7 +156,7 @@ class DashboardRepository {
         'pickupEnd': pickupEnd.toUtc().toIso8601String(),
         'commerceId': commerceId,
         'categoryId': categoryId,
-        if (imageUrl != null) 'imageUrl': imageUrl,
+        'imageUrl': ?imageUrl,
       }),
     );
 

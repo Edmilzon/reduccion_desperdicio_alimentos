@@ -154,7 +154,7 @@ class CommerceModel {
 
   factory CommerceModel.fromJson(Map<String, dynamic> json) {
     return CommerceModel(
-      id: json['id'] ?? 0,
+      id: json['id'] is String ? int.tryParse(json['id']) ?? 0 : (json['id'] ?? 0) as int,
       name: json['name'] ?? '',
       description: json['description'],
       latitude: json['latitude']?.toString(),

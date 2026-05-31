@@ -19,6 +19,7 @@ class ProductCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -42,7 +43,7 @@ class ProductCard extends StatelessWidget {
                     child: Image.network(
                       product.imageUrl,
                       width: double.infinity,
-                      height: double.infinity,
+                      height: 120,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Container(
                         color: Colors.grey[200],
@@ -117,10 +118,10 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
+            Flexible(
               flex: 3,
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -185,7 +186,7 @@ class ProductCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     SizedBox(
                       width: double.infinity,
                       height: 26,

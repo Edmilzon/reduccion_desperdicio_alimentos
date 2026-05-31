@@ -57,8 +57,6 @@ class MapApiService {
   static const String baseUrl = ApiConstants.baseUrl;
 
   static List<MapCommerceModel>? _cachedCommerces;
-  static double? _cachedLat;
-  static double? _cachedLng;
 
   static List<MapCommerceModel>? get cachedCommerces => _cachedCommerces;
 
@@ -80,11 +78,14 @@ class MapApiService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      final list = data.map((json) => MapCommerceModel.fromJson(json)).toList();
+      final List<dynamic> data;
+      try {
+        data = (jsonDecode(response.body) as List<dynamic>?) ?? [];
+      } catch (_) {
+        throw Exception('Error al procesar la respuesta del servidor');
+      }
+      final list = data.map((json) => MapCommerceModel.fromJson(json as Map<String, dynamic>)).toList();
       _cachedCommerces = list;
-      _cachedLat = lat;
-      _cachedLng = lng;
       return list;
     } else {
       throw Exception(
@@ -101,8 +102,13 @@ class MapApiService {
         .timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => MapCommerceModel.fromJson(json)).toList();
+      final List<dynamic> data;
+      try {
+        data = (jsonDecode(response.body) as List<dynamic>?) ?? [];
+      } catch (_) {
+        throw Exception('Error al procesar la respuesta del servidor');
+      }
+      return data.map((json) => MapCommerceModel.fromJson(json as Map<String, dynamic>)).toList();
     } else {
       throw Exception(
         'Error al obtener comercios por dirección (${response.statusCode})',

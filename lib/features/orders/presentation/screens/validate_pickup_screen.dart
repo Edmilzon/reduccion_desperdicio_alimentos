@@ -282,7 +282,7 @@ class _ValidatePickupScreenState extends State<ValidatePickupScreen> {
   }
 
   Widget _buildErrorCard() {
-    final isUsed = _errorMessage == 'Código ya utilizado';
+    final isUsed = _errorMessage?.contains('ya utilizado') == true;
 
     return Container(
       width: double.infinity,

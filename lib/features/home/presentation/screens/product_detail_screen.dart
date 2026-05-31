@@ -7,6 +7,7 @@ import 'package:reduccion_desperdicio_alimentos/core/services/alerts_repository.
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/countdown_timer.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/quantity_button.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -49,12 +50,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final dropped = cachedPrice != null && product.price < cachedPrice;
       await _priceCacheRepo.updatePrice(widget.productId, product.price);
       if (dropped && product.isExpiringSoon) {
-        _alertsRepo.addAlert(
-          type: 'bajo_precio',
-          productId: product.id,
-          title: '¡Precio bajó!',
-          message: '${product.title} ahora está a \$${product.price.toStringAsFixed(2)}',
+        final existing = await _alertsRepo.getAlerts();
+        final alreadyAlerted = existing.any(
+          (a) => a.productId == product.id && a.type == 'bajo_precio',
         );
+        if (!alreadyAlerted) {
+          _alertsRepo.addAlert(
+            type: 'bajo_precio',
+            productId: product.id,
+            title: '¡Precio bajó!',
+            message: '${product.title} ahora está a \$${product.price.toStringAsFixed(2)}',
+          );
+        }
       }
       setState(() {
         _product = product;
@@ -298,8 +305,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          _QuantityButton(
+          QuantityButton(
             icon: Icons.remove,
+            size: 36,
             onPressed: _quantity > 1
                 ? () => setState(() => _quantity--)
                 : null,
@@ -315,8 +323,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-          _QuantityButton(
+          QuantityButton(
             icon: Icons.add,
+            size: 36,
             onPressed: _quantity < p.quantity
                 ? () => setState(() => _quantity++)
                 : null,
@@ -657,30 +666,4 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 }
 
-class _QuantityButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
 
-  const _QuantityButton({required this.icon, this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final isEnabled = onPressed != null;
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: isEnabled ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: isEnabled ? AppColors.primary : Colors.grey,
-        ),
-      ),
-    );
-  }
-}

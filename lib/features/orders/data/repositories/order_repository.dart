@@ -22,32 +22,6 @@ class OrderRepository {
     return token;
   }
 
-  Future<OrderModel> createCashOrder({
-    required int productId,
-    required int quantity,
-  }) async {
-    final token = await _getToken();
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/orders'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'productId': productId,
-        'quantity': quantity,
-        'paymentMethod': 'cash',
-      }),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return OrderModel.fromJson(jsonDecode(response.body));
-    }
-
-    _handleOrderError(response);
-  }
-
   Future<OrderModel> createOrder({
     required int productId,
     required int quantity,

@@ -1,4 +1,4 @@
-@baseUrl = https://reduccion-desperdicio-backend.vercel.app/
+@baseUrl = http://localhost:5000
 
 ### Health check
 GET {{baseUrl}}/

@@ -69,7 +69,13 @@ class FilterStore extends ChangeNotifier {
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final List<dynamic> data;
+        try {
+          data = (jsonDecode(response.body) as List<dynamic>?) ?? [];
+        } catch (_) {
+          _activeCategories = [];
+          return;
+        }
         _activeCategories =
             data.map((j) => CategoryModel.fromJson(j as Map<String, dynamic>)).toList();
       }

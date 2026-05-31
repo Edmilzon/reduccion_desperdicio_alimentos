@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../controllers/auth_controller.dart';
+import 'auth_controller.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   final AuthController authController;

@@ -296,7 +296,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           onPay: !_orders[i].isCash && _orders[i].isPendingPayment
               ? () => _payOrder(_orders[i])
               : null,
-          onCancel: _orders[i].status != 'cancelled' && _orders[i].status != 'confirmed'
+          onCancel: _orders[i].status != 'cancelled' &&
+                  _orders[i].status != 'confirmed' &&
+                  _orders[i].deliveryStatus == 'pending'
               ? () => _cancelOrder(_orders[i])
               : null,
         ),
