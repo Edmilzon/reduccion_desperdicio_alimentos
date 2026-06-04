@@ -69,8 +69,25 @@ class _MyOffersScreenState extends State<MyOffersScreen>
     super.dispose();
   }
 
-  List<OfertaModel> get _actuales => _ofertas.where((o) => o.isActive).toList();
-  List<OfertaModel> get _historial => _ofertas.where((o) => o.isSold).toList();
+  List<OfertaModel> get _actuales {
+    final now = DateTime.now();
+    final lista = _ofertas.where((o) => o.isActive).toList();
+    lista.sort((a, b) {
+      final aUpcoming = a.pickupStart.isAfter(now);
+      final bUpcoming = b.pickupStart.isAfter(now);
+      if (aUpcoming && !bUpcoming) return -1;
+      if (!aUpcoming && bUpcoming) return 1;
+      if (aUpcoming) return a.pickupStart.compareTo(b.pickupStart);
+      return a.pickupEnd.compareTo(b.pickupEnd);
+    });
+    return lista;
+  }
+
+  List<OfertaModel> get _historial {
+    final lista = _ofertas.where((o) => o.isSold).toList();
+    lista.sort((a, b) => b.pickupEnd.compareTo(a.pickupEnd));
+    return lista;
+  }
 
   @override
   Widget build(BuildContext context) {
