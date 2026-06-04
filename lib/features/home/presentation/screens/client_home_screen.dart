@@ -27,6 +27,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     super.initState();
     _updateCartCount();
     CartRepository.notifier.addListener(_onCartChanged);
+    CartRepository.navigateToCartNotifier.addListener(_onNavigateToCart);
     NotificationService.init();
     _pickupReminder.start();
   }
@@ -34,12 +35,20 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   @override
   void dispose() {
     CartRepository.notifier.removeListener(_onCartChanged);
+    CartRepository.navigateToCartNotifier.removeListener(_onNavigateToCart);
     _pickupReminder.stop();
     super.dispose();
   }
 
   void _onCartChanged() {
     _updateCartCount();
+  }
+
+  void _onNavigateToCart() {
+    if (CartRepository.navigateToCartNotifier.value) {
+      CartRepository.navigateToCartNotifier.value = false;
+      setState(() => _currentIndex = 2);
+    }
   }
 
   Future<void> _updateCartCount() async {

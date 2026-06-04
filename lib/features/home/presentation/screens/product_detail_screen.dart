@@ -668,6 +668,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             label: 'Ver Carrito',
             textColor: Colors.white,
             onPressed: () {
+              CartRepository.navigateToCartNotifier.value = true;
               Navigator.pop(context);
             },
           ),
