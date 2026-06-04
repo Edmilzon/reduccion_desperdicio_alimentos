@@ -29,6 +29,10 @@ class DashboardRepository {
     return parsed;
   }
 
+  Map<String, dynamic>? _extractCommerce(Map<String, dynamic> data) {
+    return data['commerce'] ?? data['user']?['commerce'];
+  }
+
   Future<String?> _fetchCommerceIdFromApi({bool clearOnAuthError = true}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);
@@ -40,11 +44,12 @@ class DashboardRepository {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['commerce'] != null) {
-          final id = data['commerce']['id']?.toString();
+        final commerce = _extractCommerce(data);
+        if (commerce != null) {
+          final id = commerce['id']?.toString();
           if (id != null) {
             await prefs.setString(_commerceIdKey, id);
           }
@@ -71,7 +76,7 @@ class DashboardRepository {
     final response = await http.get(
       Uri.parse('$baseUrl/products/categories'),
       headers: {'Content-Type': 'application/json'},
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -95,7 +100,7 @@ class DashboardRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -116,7 +121,7 @@ class DashboardRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -156,9 +161,9 @@ class DashboardRepository {
         'pickupEnd': pickupEnd.toUtc().toIso8601String(),
         'commerceId': commerceId,
         'categoryId': categoryId,
-        'imageUrl': ?imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       }),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
@@ -184,10 +189,11 @@ class DashboardRepository {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(productData),
-    );
+    ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) {
-      throw Exception('Error al actualizar producto');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final msg = _extractError(response);
+      throw Exception(msg);
     }
   }
 
@@ -210,7 +216,7 @@ class DashboardRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       final msg = _extractError(response);

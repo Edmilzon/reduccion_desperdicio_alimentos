@@ -4,6 +4,7 @@ import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/my_offers_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/dashboard/presentation/screens/create_product_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/profile_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/merchant_pending_orders_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -42,12 +43,26 @@ class _MainShellState extends State<MainShell> {
               },
             )
           : _currentIndex == 1
-              ? CreateProductScreen(
-                  onSuccess: _onProductPublished,
-                )
+              ? const MerchantPendingOrdersScreen()
               : _currentIndex == 2
                   ? const DashboardScreen()
                   : const ProfileScreen(isMerchant: true),
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreateProductScreen(
+                      onSuccess: _onProductPublished,
+                    ),
+                  ),
+                );
+              },
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
@@ -65,9 +80,9 @@ class _MainShellState extends State<MainShell> {
             label: 'Gestionar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            activeIcon: Icon(Icons.add_circle),
-            label: 'Añadir',
+            icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment),
+            label: 'Pedidos',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_outlined),

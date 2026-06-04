@@ -94,9 +94,16 @@ class MapApiService {
     }
   }
 
-  Future<List<MapCommerceModel>> getCommercesByAddress(String address) async {
-    final uri = Uri.parse(
-        '$baseUrl/commerces/by-address?address=${Uri.encodeComponent(address)}');
+  Future<List<MapCommerceModel>> getCommercesByAddress(
+    String address, {
+    double radiusKm = 0,
+  }) async {
+    final params = StringBuffer();
+    params.write('address=${Uri.encodeComponent(address)}');
+    if (radiusKm > 0) {
+      params.write('&radius=$radiusKm');
+    }
+    final uri = Uri.parse('$baseUrl/commerces/by-address?$params');
     final response = await http
         .get(uri)
         .timeout(const Duration(seconds: 20));
@@ -114,5 +121,9 @@ class MapApiService {
         'Error al obtener comercios por dirección (${response.statusCode})',
       );
     }
+  }
+
+  static void clearCache() {
+    _cachedCommerces = null;
   }
 }

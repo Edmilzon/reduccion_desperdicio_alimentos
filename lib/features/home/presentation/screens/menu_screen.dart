@@ -43,13 +43,8 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _checkExpiringFavorites() async {
-    final ids = await _favoritesRepo.getFavorites();
-    if (ids.isEmpty) {
-      if (mounted) setState(() => _expiringFavoritesCount = 0);
-      return;
-    }
-    final all = await _repository.getAllProducts();
-    final count = all.where((p) => ids.contains(p.id) && p.isExpiringSoon).length;
+    final products = await _favoritesRepo.getFavoriteProducts();
+    final count = products.where((p) => p.isExpiringSoon).length;
     if (mounted) setState(() => _expiringFavoritesCount = count);
   }
 
@@ -95,6 +90,10 @@ class _MenuScreenState extends State<MenuScreen> {
     if (_products.isEmpty) {
       return const Center(child: Text('No hay productos disponibles'));
     }
+
+    _products.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
+    final featured = _products.first;
+    final gridProducts = _products.length > 1 ? _products.sublist(1) : <ProductModel>[];
 
     return RefreshIndicator(
       onRefresh: _loadProducts,
@@ -158,17 +157,17 @@ class _MenuScreenState extends State<MenuScreen> {
                   SizedBox(
                     height: 450,
                     child: FeaturedProductCard(
-                      product: _products.first,
-                      isExpanded: _expandedIndex == 0,
+                      product: featured,
+                      isExpanded: _expandedIndex == featured.id,
                       onExpand: () {
                         setState(() {
-                          _expandedIndex = _expandedIndex == 0 ? null : 0;
+                          _expandedIndex = _expandedIndex == featured.id ? null : featured.id;
                         });
                       },
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ProductDetailScreen(productId: _products.first.id),
+                          builder: (_) => ProductDetailScreen(productId: featured.id),
                         ),
                       ),
                     ),
@@ -198,7 +197,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final product = _products[index + 1];
+                  final product = gridProducts[index];
                   return ProductCard(
                     product: product,
                     onTap: () => Navigator.push(
@@ -215,7 +214,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   );
                 },
-                childCount: _products.length > 1 ? _products.length - 1 : 0,
+                childCount: gridProducts.length,
               ),
             ),
           ),

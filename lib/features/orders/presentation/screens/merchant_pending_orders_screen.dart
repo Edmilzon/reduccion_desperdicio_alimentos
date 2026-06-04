@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/widgets/payment_status_badge.dart';
@@ -59,14 +58,11 @@ class _MerchantPendingOrdersScreenState
 
       if (!mounted) return;
 
-      final previousOrders = _orders;
       setState(() {
         _orders = orders;
         _isLoading = false;
         _error = null;
       });
-
-      _notifyNewOrders(orders, previousOrders);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -74,26 +70,6 @@ class _MerchantPendingOrdersScreenState
         _isLoading = false;
       });
     }
-  }
-
-  void _notifyNewOrders(List<OrderModel> current, List<OrderModel> previous) {
-    if (previous.isEmpty) return;
-
-    final newOrders = current.where((o) =>
-        !previous.any((p) => p.id == o.id) &&
-        o.deliveryStatus == 'pending');
-
-    if (newOrders.isEmpty) return;
-
-    final count = newOrders.length;
-    NotificationService.showWithChannel(
-      id: DateTime.now().millisecondsSinceEpoch % 100000,
-      title: 'Nuevo${count > 1 ? 's' : ''} pedido${count > 1 ? 's' : ''}',
-      body: count == 1
-          ? '${newOrders.first.buyerName ?? "Un cliente"} ha realizado un pedido'
-          : '$count nuevos pedidos recibidos',
-      channelId: 'merchant_new_order',
-    );
   }
 
   Future<void> _autoExpireOrders() async {
@@ -118,14 +94,20 @@ class _MerchantPendingOrdersScreenState
     }
   }
 
+  bool _isExpired(OrderModel o, DateTime now) =>
+      o.pickupEnd != null && o.pickupEnd!.isBefore(now);
+
   List<OrderModel> get _filteredOrders {
     List<OrderModel> result;
+
+    final now = DateTime.now();
 
     if (_selectedTab == 0) {
       result = _orders
           .where((order) =>
               order.paymentStatus == 'pending' &&
-              order.deliveryStatus == 'pending')
+              order.deliveryStatus == 'pending' &&
+              !_isExpired(order, now))
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2100);
@@ -143,7 +125,11 @@ class _MerchantPendingOrdersScreenState
       });
     } else {
       result = _orders
-          .where((order) => order.deliveryStatus == 'not_picked_up')
+          .where((order) =>
+              order.deliveryStatus == 'not_picked_up' ||
+              (order.paymentStatus == 'pending' &&
+               order.deliveryStatus == 'pending' &&
+               _isExpired(order, now)))
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2000);
@@ -333,7 +319,7 @@ class _MerchantPendingOrdersScreenState
         children: [
           Column(
             children: [
-              if (_selectedTab == 0) _buildSearchBar(),
+              _buildSearchBar(),
               _buildTabs(),
               Expanded(
                 child: _isLoading
@@ -562,7 +548,7 @@ class _MerchantOrderCard extends StatelessWidget {
                 ),
               ),
               PaymentStatusBadge(
-                status: order.isNotPickedUp ? order.deliveryStatus : order.paymentStatus,
+                status: order.paymentStatus == 'paid' ? order.paymentStatus : order.deliveryStatus,
               ),
             ],
           ),

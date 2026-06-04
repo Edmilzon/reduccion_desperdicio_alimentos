@@ -2,6 +2,8 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_scheduler.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
@@ -25,6 +27,9 @@ void main() async {
     print('PLATFORM CRASH: $error\n$stack');
     return true;
   };
+
+  await NotificationService.init();
+  NotificationScheduler.start();
 
   final prefs = await SharedPreferences.getInstance();
   runApp(MyApp(prefs: prefs));
@@ -92,7 +97,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Eco Bocado',
+      title: 'Ecobocado',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),

@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'auth_controller.dart';
+import '../../data/repositories/auth_repository.dart';
 import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  final String token;
   final String email;
-  final AuthController authController;
 
   const ResetPasswordScreen({
-    Key? key, 
-    required this.token, 
+    Key? key,
     required this.email,
-    required this.authController,
   }) : super(key: key);
 
   @override
@@ -20,17 +16,23 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _tokenController = TextEditingController();
   final _passController = TextEditingController();
   final _confirmPassController = TextEditingController();
-  
+  final _authRepo = AuthRepository();
+
   bool _isObscure1 = true;
   bool _isObscure2 = true;
   bool _isLoading = false;
 
-  bool get _hasMinLength => _passController.text.length >= 6;
-  bool get _doPasswordsMatch => 
-      _passController.text == _confirmPassController.text && 
+  bool get _hasMinLength => _passController.text.length >= 8;
+  bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passController.text);
+  bool get _hasNumber => RegExp(r'[0-9]').hasMatch(_passController.text);
+  bool get _doPasswordsMatch =>
+      _passController.text == _confirmPassController.text &&
       _confirmPassController.text.isNotEmpty;
+  bool get _isPasswordValid =>
+      _hasMinLength && _hasUppercase && _hasNumber && _doPasswordsMatch;
 
   @override
   void initState() {
@@ -41,23 +43,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   void dispose() {
+    _tokenController.dispose();
     _passController.dispose();
     _confirmPassController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || !_doPasswordsMatch) return;
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
+
     try {
-      await widget.authController.resetPassword(
+      await _authRepo.resetPassword(
         widget.email,
-        widget.token, 
+        _tokenController.text.trim(),
         _passController.text,
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -87,7 +90,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear Nueva Contraseña')),
+      appBar: AppBar(title: const Text('Restablecer Contraseña')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -95,6 +98,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                'Correo: ${widget.email}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _tokenController,
+                decoration: const InputDecoration(
+                  labelText: 'Código de recuperación',
+                  prefixIcon: Icon(Icons.vpn_key_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Ingresa el código recibido por correo';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _passController,
                 obscureText: _isObscure1,
@@ -109,10 +132,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                _hasMinLength ? '✓ Mínimo 6 caracteres' : '✗ Mínimo 6 caracteres',
-                style: TextStyle(color: _hasMinLength ? Colors.green : Colors.red, fontSize: 12),
-              ),
+              _buildPasswordRequirements(),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _confirmPassController,
@@ -130,8 +150,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 8),
               if (_confirmPassController.text.isNotEmpty)
                 Text(
-                  _doPasswordsMatch ? '✓ Las contraseñas coinciden' : '✗ Las contraseñas no coinciden',
-                  style: TextStyle(color: _doPasswordsMatch ? Colors.green : Colors.red, fontSize: 12),
+                  _doPasswordsMatch
+                      ? '✓ Las contraseñas coinciden'
+                      : '✗ Las contraseñas no coinciden',
+                  style: TextStyle(
+                    color: _doPasswordsMatch ? Colors.green : Colors.red,
+                    fontSize: 12,
+                  ),
                 ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -140,16 +165,42 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   foregroundColor: colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: (_isLoading || !_doPasswordsMatch || !_hasMinLength) 
-                    ? null 
-                    : _submit,
-                child: _isLoading 
+                onPressed: (_isLoading || !_isPasswordValid) ? null : _submit,
+                child: _isLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Restablecer Contraseña'),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordRequirements() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _requirementRow('Mínimo 8 caracteres', _hasMinLength),
+        _requirementRow('Al menos una mayúscula', _hasUppercase),
+        _requirementRow('Al menos un número', _hasNumber),
+      ],
+    );
+  }
+
+  Widget _requirementRow(String text, bool satisfied) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        children: [
+          Icon(
+            satisfied ? Icons.check_circle : Icons.circle_outlined,
+            size: 14,
+            color: satisfied ? Colors.green : Colors.grey,
+          ),
+          const SizedBox(width: 6),
+          Text(text, style: TextStyle(fontSize: 12, color: satisfied ? Colors.green : Colors.grey[600])),
+        ],
       ),
     );
   }

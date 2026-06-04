@@ -137,6 +137,10 @@ class AuthRepository {
     return prefs.getString(_tokenKey);
   }
 
+  Map<String, dynamic>? _extractCommerce(Map<String, dynamic> data) {
+    return data['commerce'] ?? data['user']?['commerce'];
+  }
+
   Future<UserModel?> fetchProfile() async {
     final token = await getToken();
     if (token == null) return null;
@@ -152,13 +156,14 @@ class AuthRepository {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final user = UserModel.fromJson(data['user']);
-      if (user.isMerchant && data['commerce'] != null) {
+      final commerce = _extractCommerce(data);
+      if (user.isMerchant && commerce != null) {
         final prefs = await SharedPreferences.getInstance();
-        final commerceId = data['commerce']['id']?.toString();
+        final commerceId = commerce['id']?.toString();
         if (commerceId != null) {
           await prefs.setString(commerceIdKey, commerceId);
         }
-        final commerceName = data['commerce']['name']?.toString();
+        final commerceName = commerce['name']?.toString();
         if (commerceName != null) {
           await prefs.setString(commerceNameKey, commerceName);
         }
@@ -207,7 +212,7 @@ class AuthRepository {
       body: jsonEncode({
         'email': email,
         'token': token,
-        'password': newPassword,
+        'newPassword': newPassword,
       }),
     );
     if (response.statusCode != 200 && response.statusCode != 201) {

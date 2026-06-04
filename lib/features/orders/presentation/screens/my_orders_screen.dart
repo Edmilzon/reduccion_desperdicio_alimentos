@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
@@ -52,12 +53,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     final qrData = order.reservationCode.isNotEmpty
         ? order.reservationCode
         : 'ECO-${order.id}';
-    if (qrData.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código de reserva no disponible'), backgroundColor: Colors.red),
-      );
-      return;
-    }
 
     showDialog(
       context: context,
@@ -99,14 +94,21 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 if (!mounted) return;
-                setState(() {});
                 try {
                   final updated = await _repository.payOrder(orderId: order.id);
                   final i = _orders.indexWhere((o) => o.id == updated.id);
                   if (i >= 0 && mounted) {
                     setState(() => _orders[i] = updated);
                   }
-                  if (mounted) _showSuccessDialog(context);
+                  if (mounted) {
+                    NotificationService.showWithChannel(
+                      id: order.id + 7000,
+                      title: ' Pago confirmado',
+                      body: 'Tu pago para "${order.productTitle ?? 'el pedido'}" fue procesado correctamente',
+                      channelId: 'order_reminder',
+                    );
+                    _showSuccessDialog(context);
+                  }
                 } catch (_) {
                   if (!mounted) return;
                   try {
@@ -116,6 +118,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       if (paid != null) {
                         final i = _orders.indexWhere((o) => o.id == paid.id);
                         if (i >= 0) setState(() => _orders[i] = paid);
+                        NotificationService.showWithChannel(
+                          id: paid.id + 7000,
+                          title: ' Pago confirmado',
+                          body: 'Tu pago para "${paid.productTitle ?? 'el pedido'}" fue procesado correctamente',
+                          channelId: 'order_reminder',
+                        );
                         _showSuccessDialog(context);
                       } else {
                         setState(() => _orders = freshOrders);
@@ -125,7 +133,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       }
                     }
                   } catch (_) {
-                    if (mounted) _loadOrders();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error al procesar el pago'), backgroundColor: Colors.red),
+                      );
+                      _loadOrders();
+                    }
                   }
                 }
               },

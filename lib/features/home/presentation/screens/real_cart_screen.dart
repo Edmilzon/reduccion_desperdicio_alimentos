@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/cart_repository.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/quantity_button.dart';
@@ -334,6 +335,14 @@ class _RealCartScreenState extends State<RealCartScreen> {
 
     if (!mounted) return;
     _loadCart();
+    if (succeeded.isNotEmpty) {
+      NotificationService.showWithChannel(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        title: ' Pedido confirmado',
+        body: '${succeeded.length} producto${succeeded.length > 1 ? 's' : ''} reservado${succeeded.length > 1 ? 's' : ''} correctamente',
+        channelId: 'order_reminder',
+      );
+    }
     _showCheckoutResultDialog(succeeded, failed, paymentMethod);
   }
 

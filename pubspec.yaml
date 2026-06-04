@@ -45,6 +45,7 @@ dependencies:
   url_launcher: ^6.3.1
   qr_flutter: ^4.1.0
   flutter_local_notifications: ^18.0.1
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +57,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.jpeg"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images/logo.jpeg"
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

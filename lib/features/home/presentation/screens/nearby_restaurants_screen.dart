@@ -45,13 +45,20 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
 
   double get _mapHeight => widget.embedded ? 150.0 : 220.0;
 
-  int _commerceRestaurantId(MapCommerceModel commerce) {
-    return int.tryParse(commerce.restaurantId ?? commerce.id) ?? 0;
+  int? _parseCommerceId(String id) {
+    final parsed = int.tryParse(id);
+    if (parsed == null || parsed <= 0) return null;
+    return parsed;
   }
 
   void _openRestaurantDetail(MapCommerceModel commerce) {
-    final id = _commerceRestaurantId(commerce);
-    if (id <= 0) return;
+    final id = _parseCommerceId(commerce.restaurantId ?? commerce.id);
+    if (id == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('Error: ID de restaurante inválido')),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -66,8 +73,6 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     setState(() {
       _commerces = cached;
       _isLoading = false;
-      _mapCenter = LatLng(cached.first.latitude, cached.first.longitude);
-      _mapZoom = 12.0;
     });
     if (!widget.embedded) _fitAllMarkers();
   }
@@ -111,6 +116,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
       final position = await _locationService
           .getCurrentPosition()
           .timeout(const Duration(seconds: 8));
+      if (!mounted) return;
       lat = position.latitude;
       lng = position.longitude;
       _userLocation = LatLng(lat, lng);
@@ -118,6 +124,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
       _mapZoom = 13.0;
     } catch (e) {
       locationWarning = e.toString().replaceAll('Exception: ', '');
+      if (!mounted) return;
     }
 
     try {
@@ -133,11 +140,6 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
       setState(() {
         _commerces = commerces;
         _hasLoadedOnce = true;
-        if (commerces.isNotEmpty) {
-          _mapCenter =
-              LatLng(commerces.first.latitude, commerces.first.longitude);
-          _mapZoom = 12.0;
-        }
         _error = commerces.isEmpty
             ? (locationWarning ??
                 'No hay locales registrados. Verifica que el servidor esté activo.')

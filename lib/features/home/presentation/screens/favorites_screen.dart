@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/favorites_repository.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/countdown_timer.dart';
 
@@ -15,8 +13,7 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   final _favoritesRepo = FavoritesRepository();
-  final _productRepo = ProductRepository();
-  List<ProductModel> _favoriteProducts = [];
+  List<CachedFavoriteProduct> _favoriteProducts = [];
   bool _isLoading = true;
   String? _error;
 
@@ -40,24 +37,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Future<void> _loadFavorites() async {
     setState(() => _isLoading = true);
     try {
-      final ids = await _favoritesRepo.getFavorites();
-      if (ids.isEmpty) {
+      final products = await _favoritesRepo.getFavoriteProducts();
+      if (mounted) {
         setState(() {
-          _favoriteProducts = [];
+          _favoriteProducts = products;
           _isLoading = false;
         });
-        return;
       }
-      final all = await _productRepo.getAllProducts();
-      setState(() {
-        _favoriteProducts = all.where((p) => ids.contains(p.id)).toList();
-        _isLoading = false;
-      });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
     }
   }
 
@@ -142,7 +130,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 }
 
 class _FavoriteItemCard extends StatelessWidget {
-  final ProductModel product;
+  final CachedFavoriteProduct product;
   final VoidCallback? onTap;
   final VoidCallback? onRemove;
 
@@ -173,10 +161,10 @@ class _FavoriteItemCard extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
                   ),
-                  child: product.imageUrl.isNotEmpty
+                  child: (product.imageUrl?.isNotEmpty == true)
                       ? ClipRRect(
                           borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                          child: Image.network(product.imageUrl, fit: BoxFit.cover, width: 100, height: 100,
+                          child: Image.network(product.imageUrl!, fit: BoxFit.cover, width: 100, height: 100,
                             errorBuilder: (_, _, _) => const Icon(Icons.fastfood, size: 40, color: AppColors.primary),
                           ),
                         )

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_input.dart';
+import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_password_input.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_button.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
@@ -7,7 +8,6 @@ import 'package:reduccion_desperdicio_alimentos/features/auth/data/models/auth_m
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 import 'account_type_screen.dart';
 import 'forgot_password_screen.dart';
-import 'auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final destination = user.isMerchant
         ? const MainShell()
         : const ClientHomeScreen();
-    
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => destination),
@@ -66,10 +66,23 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Form(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/logo.jpeg'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha: 0.6),
+              BlendMode.darken,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,32 +130,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                CustomInput(
-                  controller: passwordController,
+                CustomPasswordInput(
                   hint: "********",
-                  label: "Contraseña",
+                  controller: passwordController,
                   obscureText: obscurePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  ),
+                  onToggle: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return "La contraseña es obligatoria";
                     }
-
-                    if (value.length < 6) {
-                      return "Mínimo 6 caracteres";
+                    if (value.length < 8) {
+                      return "Mínimo 8 caracteres";
                     }
-
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return "Debe contener una mayúscula";
+                    }
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
+                      return "Debe contener un número";
+                    }
                     return null;
                   },
                 ),
@@ -156,9 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ForgotPasswordScreen(
-                            authController: AuthController(),
-                          ),
+                          builder: (_) => const ForgotPasswordScreen(),
                         ),
                       );
                     },
@@ -188,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                        MaterialPageRoute(
                               builder: (_) => const AccountTypeScreen(),
                             ),
                           );
@@ -209,6 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

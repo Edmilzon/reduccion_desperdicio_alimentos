@@ -26,45 +26,52 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    const pickupChannel = AndroidNotificationChannel(
+    await _createChannel(
       'pickup_reminder',
       'Recordatorio de recogida',
-      description: 'Alertas cuando se acerca la hora límite de recogida',
-      importance: Importance.high,
+      'Alertas cuando se acerca la hora límite de recogida',
     );
-
-    const geofenceChannel = AndroidNotificationChannel(
+    await _createChannel(
       'geofence_code',
       'Cercanía al local',
-      description: 'Notificaciones cuando estás cerca del restaurante',
-      importance: Importance.high,
+      'Notificaciones cuando estás cerca del restaurante',
     );
-
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(pickupChannel);
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(geofenceChannel);
-
-    const merchantOrderChannel = AndroidNotificationChannel(
+    await _createChannel(
       'merchant_new_order',
       'Nuevos pedidos',
-      description: 'Notificaciones cuando llega un nuevo pedido',
-      importance: Importance.high,
+      'Notificaciones cuando llega un nuevo pedido',
     );
-
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(merchantOrderChannel);
+    await _createChannel(
+      'merchant_expiring',
+      'Productos por vencer',
+      'Notificaciones cuando un producto activo está por vencer',
+    );
+    await _createChannel(
+      'favorites_expiring',
+      'Favoritos por vencer',
+      'Notificaciones cuando un favorito está por expirar',
+    );
+    await _createChannel(
+      'order_reminder',
+      'Recordatorio de pedido',
+      'Notificaciones de estado del pedido',
+    );
 
     _initialized = true;
   }
 
-  static void _onNotificationTap(NotificationResponse response) {}
+  static Future<void> _createChannel(String id, String name, String desc) async {
+    final channel = AndroidNotificationChannel(id, name,
+        description: desc, importance: Importance.high);
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  }
+
+  static void _onNotificationTap(NotificationResponse response) {
+    // Navigation handler — reserved for future use
+  }
 
   static Future<void> showWithChannel({
     required int id,
@@ -99,6 +106,9 @@ class NotificationService {
     'pickup_reminder': 'Recordatorio de recogida',
     'geofence_code': 'Cercanía al local',
     'merchant_new_order': 'Nuevos pedidos',
+    'merchant_expiring': 'Productos por vencer',
+    'favorites_expiring': 'Favoritos por vencer',
+    'order_reminder': 'Recordatorio de pedido',
   };
 
   static Future<void> show({
@@ -151,4 +161,5 @@ class NotificationService {
 
     await _plugin.show(id, title, body, details, payload: payload);
   }
+
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../../../../shared/widgets/custom_input.dart';
+import '../../../../shared/widgets/custom_password_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_label.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -169,47 +170,24 @@ class _CommerceAccessScreenState extends State<CommerceAccessScreen> {
               const SizedBox(height: 15),
 
               const CustomLabel("Contraseña"),
-              CustomInput(
+              CustomPasswordInput(
                 hint: "********",
                 controller: passwordController,
                 obscureText: obscurePassword,
+                onToggle: () => setState(() => obscurePassword = !obscurePassword),
                 onChanged: (_) => setState(() {}),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscurePassword = !obscurePassword;
-                    });
-                  },
-                ),
                 validator: passwordValidator,
               ),
 
               const SizedBox(height: 15),
 
               const CustomLabel("Confirmar contraseña"),
-              CustomInput(
+              CustomPasswordInput(
                 hint: "********",
                 controller: confirmPasswordController,
                 obscureText: obscureConfirmPassword,
+                onToggle: () => setState(() => obscureConfirmPassword = !obscureConfirmPassword),
                 onChanged: (_) => setState(() {}),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureConfirmPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscureConfirmPassword =
-                          !obscureConfirmPassword;
-                    });
-                  },
-                ),
                 validator: confirmPasswordValidator,
               ),
 

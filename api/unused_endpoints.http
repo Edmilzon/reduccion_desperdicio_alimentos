@@ -1,0 +1,91 @@
+@baseURL = https://reduccion-desperdicio-backend.vercel.app
+@token = 
+@commerceId = 1
+@categoryId = 1
+
+### UNUSED ENDPOINTS — solo referencia backend
+###
+### Estos endpoints existen en la API (documentados en los .http hermanos)
+### pero NO son utilizados por la app Flutter. Se mantienen como referencia
+### para desarrollo backend o futuros features.
+###
+### ============================================================
+### COMERCIOS (commerces.http)
+### ============================================================
+
+### Listar solo IDs y nombres (para combos/selects)
+# La app nunca necesita este listado reducido.
+GET {{baseURL}}/commerces/list/all
+# 200 → [ { id, name } ]
+
+### Obtener comercio por ID (con owner)
+# La app obtiene datos del commerce anidado en GET /commerces/:id/products
+# o desde GET /auth/me. Nunca pide un commerce individual.
+GET {{baseURL}}/commerces/{{commerceId}}
+# 200 → { id, name, description, latitude, longitude, rating, imageUrl, nit, owner }
+
+### Crear comercio (requiere auth)
+# El registro de comerciante usa POST /auth/register-commerce (todo-en-uno).
+# No hay pantalla para crear comercio separadamente.
+POST {{baseURL}}/commerces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nueva Tienda",
+  "description": "Descripción de la tienda",
+  "latitude": -16.5,
+  "longitude": -68.15,
+  "nit": "12345678"
+}
+# 201 → { id, name, ... }
+
+### Actualizar comercio (solo owner)
+# La app no tiene pantalla de edición de perfil de comercio.
+PATCH {{baseURL}}/commerces/{{commerceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Tienda Actualizada"
+}
+# 200 → commerce object actualizado
+
+### Eliminar comercio (solo owner, en cascada)
+# Sin implementación en Flutter.
+DELETE {{baseURL}}/commerces/{{commerceId}}
+Authorization: Bearer {{token}}
+# 200 → raw commerce entity
+
+### Buscar restaurantes cercanos (duplicado de /commerces/nearby)
+# La app usa GET /commerces/nearby en MapApiService.
+# Este endpoint es un alias que el backend mantiene por compatibilidad.
+GET {{baseURL}}/restaurants/nearby?lat=-16.5&lng=-68.15&radius=5
+# 200 → mismo formato que /commerces/nearby
+
+### Detalle completo de restaurante con ofertas activas
+# La app usa GET /commerces/:id/products en RestaurantDetailRepository.
+# Este endpoint devuelve address/phone/isActive pero con nombres de campo
+# distintos (name vs title, pickupDeadline vs pickupEnd).
+GET {{baseURL}}/restaurants/{{commerceId}}/detail
+# 200 → { id, name, description, address, phone, isActive, offers: [...] }
+
+### ============================================================
+### PRODUCTOS (products.http)
+### ============================================================
+
+### Productos por categoría (ruta parametrizada)
+# La app filtra por categoría usando GET /products?categoryId= en
+# product_repository.dart (query param, no ruta).
+GET {{baseURL}}/products/category/{{categoryId}}
+# 200 → [ { id, title, ... } ]
+# Query opcional: ?commerceId=1
+
+### ============================================================
+### HEALTH CHECK (test.http)
+### ============================================================
+
+### Health check
+# Solo para verificar que el servidor responda. La app no lo usa.
+GET {{baseURL}}/
+# 200 → OK

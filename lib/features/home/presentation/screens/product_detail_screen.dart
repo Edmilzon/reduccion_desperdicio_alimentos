@@ -82,8 +82,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
       await _favoritesRepo.removeFavorite(widget.productId);
-    } else {
-      await _favoritesRepo.addFavorite(widget.productId);
+    } else if (_product != null) {
+      final p = _product!;
+      await _favoritesRepo.toggleFavorite(widget.productId, productData: {
+        'id': p.id,
+        'title': p.title,
+        'price': p.price,
+        'originalPrice': p.originalPrice,
+        'imageUrl': p.imageUrl,
+        'commerceName': p.commerceName,
+        'pickupEnd': p.pickupEnd.toIso8601String(),
+        'status': p.status,
+        'quantity': p.quantity,
+      });
     }
     setState(() => _isFavorite = !_isFavorite);
   }

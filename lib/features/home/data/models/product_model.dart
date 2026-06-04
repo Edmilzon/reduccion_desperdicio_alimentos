@@ -133,7 +133,7 @@ class CommerceModel {
   final String? description;
   final String? latitude;
   final String? longitude;
-  final String? rating;
+  final double? rating;
   final String? imageUrl;
   final String? nit;
   final DateTime? createdAt;
@@ -159,7 +159,7 @@ class CommerceModel {
       description: json['description'],
       latitude: json['latitude']?.toString(),
       longitude: json['longitude']?.toString(),
-      rating: json['rating']?.toString(),
+      rating: json['rating'] != null ? double.tryParse(json['rating'].toString()) : null,
       imageUrl: json['imageUrl'],
       nit: json['nit'],
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,

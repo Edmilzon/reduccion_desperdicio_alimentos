@@ -9,7 +9,7 @@ import '../data/map_api_service.dart';
 import 'widgets/filter_panel.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({Key? key}) : super(key: key);
+  const MapScreen({super.key});
 
   @override
   _MapScreenState createState() => _MapScreenState();
@@ -21,6 +21,12 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   final FilterStore _filters = FilterStore.instance;
+
+  int? _parseCommerceId(String id) {
+    final parsed = int.tryParse(id);
+    if (parsed == null || parsed <= 0) return null;
+    return parsed;
+  }
 
   List<MapCommerceModel> _commerces = [];
   LatLng _mapCenter = const LatLng(-17.423, -66.119);
@@ -47,18 +53,16 @@ class _MapScreenState extends State<MapScreen> {
   void _safeMapMove(LatLng center, double zoom) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      try {
-        _mapController.move(center, zoom);
-      } catch (_) {
-        setState(() {
-          _mapCenter = center;
-          _mapZoom = zoom;
-        });
-      }
+      _mapController.move(center, zoom);
+      setState(() {
+        _mapCenter = center;
+        _mapZoom = zoom;
+      });
     });
   }
 
   Future<void> _initLocation() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -67,8 +71,9 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final position = await _locationService.getCurrentPosition();
+      if (!mounted) return;
+
       final currentLatLng = LatLng(position.latitude, position.longitude);
-      
       setState(() {
         _currentLocation = currentLatLng;
         _mapCenter = currentLatLng;
@@ -78,6 +83,7 @@ class _MapScreenState extends State<MapScreen> {
       _safeMapMove(currentLatLng, 15.0);
       await _fetchNearbyCommerces(currentLatLng);
     } catch (e) {
+      if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       setState(() {
         _initialLocationError = true;
@@ -86,13 +92,12 @@ class _MapScreenState extends State<MapScreen> {
       await _fetchNearbyCommerces(_mapCenter);
       if (mounted) _showErrorDialog(msg);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
   Future<void> _fetchNearbyCommerces(LatLng location) async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final results = await _mapApiService.getNearbyCommerces(
@@ -101,52 +106,56 @@ class _MapScreenState extends State<MapScreen> {
         radiusKm: _filters.radius,
         category: _filters.categorySlug,
       );
+      if (!mounted) return;
       setState(() {
         _commerces = results;
         _errorMessage = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error al cargar restaurantes cercanos.';
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _searchByAddress(String address) async {
     if (address.trim().isEmpty) return;
-    
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final results = await _mapApiService.getCommercesByAddress(address);
-      setState(() {
-        _commerces = results;
-      });
-      
+      if (!mounted) return;
+
       if (results.isNotEmpty) {
         final first = results.first;
         final center = LatLng(first.latitude, first.longitude);
         setState(() {
+          _commerces = results;
           _mapCenter = center;
           _mapZoom = 14.0;
         });
         _safeMapMove(center, 14.0);
       } else {
         setState(() {
+          _commerces = results;
           _errorMessage = 'No se encontraron restaurantes cerca de esa dirección.';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error al buscar por dirección.';
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -251,11 +260,8 @@ class _MapScreenState extends State<MapScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    final restaurantId = int.tryParse(
-                          commerce.restaurantId ?? commerce.id,
-                        ) ??
-                        0;
-                    if (restaurantId <= 0) {
+                    final id = _parseCommerceId(commerce.restaurantId ?? commerce.id);
+                    if (id == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Error: ID de restaurante inválido')),
                       );
@@ -264,7 +270,7 @@ class _MapScreenState extends State<MapScreen> {
                     Navigator.pushNamed(
                       context,
                       '/restaurant-detail',
-                      arguments: {'commerceId': restaurantId},
+                      arguments: {'commerceId': id},
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -317,6 +323,8 @@ class _MapScreenState extends State<MapScreen> {
                 _safeMapMove(point, 15.0);
               },
               onPositionChanged: (position, hasGesture) {
+                _mapCenter = position.center;
+                _mapZoom = position.zoom;
                 if (hasGesture) {
                   _debouncedFetch(position.center);
                 }

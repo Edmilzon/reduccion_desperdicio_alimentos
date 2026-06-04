@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'auth_controller.dart';
+import '../../data/repositories/auth_repository.dart';
+import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  final AuthController authController;
-
-  const ForgotPasswordScreen({Key? key, required this.authController})
-      : super(key: key);
+  const ForgotPasswordScreen({Key? key}) : super(key: key);
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -15,8 +13,10 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  
+  final _authRepo = AuthRepository();
+
   bool _isLoading = false;
+  bool _emailSent = false;
   int _cooldown = 0;
   Timer? _timer;
 
@@ -28,14 +28,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _startCooldown() {
-    setState(() {
-      _cooldown = 60;
-    });
+    setState(() => _cooldown = 60);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_cooldown > 0) {
-        setState(() {
-          _cooldown--;
-        });
+        setState(() => _cooldown--);
       } else {
         timer.cancel();
       }
@@ -46,11 +42,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
+
     try {
-      await widget.authController.forgotPassword(_emailController.text.trim());
+      await _authRepo.forgotPassword(_emailController.text.trim());
       _startCooldown();
       if (mounted) {
+        setState(() => _emailSent = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Si el correo está registrado, recibirás un enlace.'),
@@ -109,10 +106,34 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 onPressed: (_isLoading || _cooldown > 0) ? null : _submit,
-                child: _isLoading 
+                child: _isLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : Text(_cooldown > 0 ? 'Reenviar en $_cooldown s' : 'Enviar enlace'),
               ),
+              if (_emailSent) ...[
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                Text(
+                  '¿Ya tienes un código de recuperación?',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ResetPasswordScreen(
+                          email: _emailController.text.trim(),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.vpn_key),
+                  label: const Text('Ingresar código'),
+                ),
+              ],
             ],
           ),
         ),
