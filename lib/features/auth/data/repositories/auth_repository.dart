@@ -205,13 +205,12 @@ class AuthRepository {
     }
   }
 
-  Future<void> resetPassword(String email, String token, String newPassword) async {
+  Future<void> resetPassword(String email, String newPassword) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/reset-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': email,
-        'token': token,
         'newPassword': newPassword,
       }),
     );
