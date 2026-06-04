@@ -91,7 +91,11 @@ class _MenuScreenState extends State<MenuScreen> {
       return const Center(child: Text('No hay productos disponibles'));
     }
 
-    _products.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
+    _products.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime(0);
+      final bDate = b.createdAt ?? DateTime(0);
+      return bDate.compareTo(aDate);
+    });
     final featured = _products.first;
     final gridProducts = _products.length > 1 ? _products.sublist(1) : <ProductModel>[];
 
