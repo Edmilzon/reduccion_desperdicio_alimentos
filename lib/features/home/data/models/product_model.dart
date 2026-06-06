@@ -117,7 +117,7 @@ class ProductModel {
     return 0;
   }
 
-  bool get isAvailable => quantity > 0 && status == 'active';
+  bool get isAvailable => quantity > 0 && status == 'active' && pickupEnd.isAfter(DateTime.now());
 
   bool get isExpiringSoon {
     final diff = pickupEnd.difference(DateTime.now());
@@ -133,7 +133,7 @@ class CommerceModel {
   final String? description;
   final String? latitude;
   final String? longitude;
-  final String? rating;
+  final double? rating;
   final String? imageUrl;
   final String? nit;
   final DateTime? createdAt;
@@ -154,12 +154,12 @@ class CommerceModel {
 
   factory CommerceModel.fromJson(Map<String, dynamic> json) {
     return CommerceModel(
-      id: json['id'] ?? 0,
+      id: json['id'] is String ? int.tryParse(json['id']) ?? 0 : (json['id'] ?? 0) as int,
       name: json['name'] ?? '',
       description: json['description'],
       latitude: json['latitude']?.toString(),
       longitude: json['longitude']?.toString(),
-      rating: json['rating']?.toString(),
+      rating: json['rating'] != null ? double.tryParse(json['rating'].toString()) : null,
       imageUrl: json['imageUrl'],
       nit: json['nit'],
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,

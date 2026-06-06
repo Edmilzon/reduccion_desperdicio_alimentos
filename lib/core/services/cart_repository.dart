@@ -69,6 +69,7 @@ class _CartNotifier extends ChangeNotifier {
 class CartRepository {
   static const String _cartKey = 'cart_items';
   static final _CartNotifier _notifier = _CartNotifier();
+  static final ValueNotifier<bool> navigateToCartNotifier = ValueNotifier<bool>(false);
 
   static _CartNotifier get notifier => _notifier;
   

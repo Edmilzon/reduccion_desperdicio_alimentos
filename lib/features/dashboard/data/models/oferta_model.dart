@@ -91,7 +91,7 @@ class OfertaModel {
     return null;
   }
 
-  bool get isActive => status == 'active';
+  bool get isActive => status == 'active' && quantity > 0;
   bool get isSold => status == 'sold' || quantity == 0;
 
   bool get isExpiringSoon {

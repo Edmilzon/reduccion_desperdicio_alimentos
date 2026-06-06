@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/widgets/payment_status_badge.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/validate_pickup_screen.dart';
 
 class MerchantPendingOrdersScreen extends StatefulWidget {
   const MerchantPendingOrdersScreen({super.key});
@@ -59,14 +59,11 @@ class _MerchantPendingOrdersScreenState
 
       if (!mounted) return;
 
-      final previousOrders = _orders;
       setState(() {
         _orders = orders;
         _isLoading = false;
         _error = null;
       });
-
-      _notifyNewOrders(orders, previousOrders);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -74,26 +71,6 @@ class _MerchantPendingOrdersScreenState
         _isLoading = false;
       });
     }
-  }
-
-  void _notifyNewOrders(List<OrderModel> current, List<OrderModel> previous) {
-    if (previous.isEmpty) return;
-
-    final newOrders = current.where((o) =>
-        !previous.any((p) => p.id == o.id) &&
-        o.deliveryStatus == 'pending');
-
-    if (newOrders.isEmpty) return;
-
-    final count = newOrders.length;
-    NotificationService.showWithChannel(
-      id: DateTime.now().millisecondsSinceEpoch % 100000,
-      title: 'Nuevo${count > 1 ? 's' : ''} pedido${count > 1 ? 's' : ''}',
-      body: count == 1
-          ? '${newOrders.first.buyerName ?? "Un cliente"} ha realizado un pedido'
-          : '$count nuevos pedidos recibidos',
-      channelId: 'merchant_new_order',
-    );
   }
 
   Future<void> _autoExpireOrders() async {
@@ -118,14 +95,21 @@ class _MerchantPendingOrdersScreenState
     }
   }
 
+  bool _isExpired(OrderModel o, DateTime now) =>
+      o.pickupEnd != null && o.pickupEnd!.isBefore(now);
+
   List<OrderModel> get _filteredOrders {
     List<OrderModel> result;
 
+    final now = DateTime.now();
+
     if (_selectedTab == 0) {
+      // Pendiente de pago: impagos no vencidos
       result = _orders
           .where((order) =>
               order.paymentStatus == 'pending' &&
-              order.deliveryStatus == 'pending')
+              order.deliveryStatus == 'pending' &&
+              !_isExpired(order, now))
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2100);
@@ -133,10 +117,21 @@ class _MerchantPendingOrdersScreenState
         return aTime.compareTo(bTime);
       });
     } else if (_selectedTab == 1) {
+      // Pendiente de recogida: pagados, no recolectados
       result = _orders
           .where((order) =>
-              order.paymentStatus == 'paid' ||
-              order.deliveryStatus == 'delivered')
+              order.paymentStatus == 'paid' &&
+              order.deliveryStatus == 'pending')
+          .toList();
+      result.sort((a, b) {
+        final aTime = a.pickupStart ?? DateTime(2100);
+        final bTime = b.pickupStart ?? DateTime(2100);
+        return aTime.compareTo(bTime);
+      });
+    } else if (_selectedTab == 2) {
+      // Entregados
+      result = _orders
+          .where((order) => order.deliveryStatus == 'delivered')
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2000);
@@ -144,8 +139,13 @@ class _MerchantPendingOrdersScreenState
         return bTime.compareTo(aTime);
       });
     } else {
+      // No recogidos
       result = _orders
-          .where((order) => order.deliveryStatus == 'not_picked_up')
+          .where((order) =>
+              order.deliveryStatus == 'not_picked_up' ||
+              (order.paymentStatus == 'pending' &&
+               order.deliveryStatus == 'pending' &&
+               _isExpired(order, now)))
           .toList();
       result.sort((a, b) {
         final aTime = a.pickupStart ?? DateTime(2000);
@@ -323,6 +323,16 @@ class _MerchantPendingOrdersScreenState
         ),
         actions: [
           IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ValidatePickupScreen()),
+            ),
+            icon: const Icon(
+              Icons.qr_code_scanner_outlined,
+              color: AppColors.primary,
+            ),
+          ),
+          IconButton(
             onPressed: _reloadAndExpire,
             icon: const Icon(
               Icons.refresh,
@@ -335,7 +345,7 @@ class _MerchantPendingOrdersScreenState
         children: [
           Column(
             children: [
-              if (_selectedTab == 0) _buildSearchBar(),
+              _buildSearchBar(),
               _buildTabs(),
               Expanded(
                 child: _isLoading
@@ -431,11 +441,13 @@ class _MerchantPendingOrdersScreenState
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Row(
         children: [
-          _tabButton('Pendientes', 0),
+          _tabButton('Pendiente pago', 0),
           const SizedBox(width: 8),
-          _tabButton('Entregados', 1),
+          _tabButton('Pendiente recogida', 1),
           const SizedBox(width: 8),
-          _tabButton('No recogidos', 2),
+          _tabButton('Entregados', 2),
+          const SizedBox(width: 8),
+          _tabButton('No recogidos', 3),
         ],
       ),
     );
@@ -444,10 +456,14 @@ class _MerchantPendingOrdersScreenState
   Widget _tabButton(String label, int index) {
     final selected = _selectedTab == index;
 
-    return Expanded(
+    return Flexible(
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => setState(() => _selectedTab = index),
+        onTap: () => setState(() {
+          _selectedTab = index;
+          _searchQuery = '';
+          _searchController.clear();
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
@@ -500,13 +516,15 @@ class _MerchantPendingOrdersScreenState
   }
 
   Widget _buildEmpty() {
-    String message = 'No hay pedidos pendientes';
-
-    if (_selectedTab == 1) {
-      message = 'No hay pedidos entregados';
-    } else if (_selectedTab == 2) {
-      message = 'No hay pedidos no recogidos';
-    }
+    const messages = [
+      'No hay pedidos pendientes de pago',
+      'No hay pedidos pendientes de recogida',
+      'No hay pedidos entregados',
+      'No hay pedidos no recogidos',
+    ];
+    final message = _selectedTab < messages.length
+        ? messages[_selectedTab]
+        : 'No hay pedidos';
 
     return Center(
       child: Text(
@@ -560,7 +578,7 @@ class _MerchantOrderCard extends StatelessWidget {
                 ),
               ),
               PaymentStatusBadge(
-                status: order.isNotPickedUp ? order.deliveryStatus : order.paymentStatus,
+                status: order.paymentStatus == 'paid' ? order.paymentStatus : order.deliveryStatus,
               ),
             ],
           ),

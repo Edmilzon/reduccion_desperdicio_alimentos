@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_input.dart';
+import '../../../../shared/widgets/custom_password_input.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import 'login_screen.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -150,23 +151,11 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
 
               const SizedBox(height: 20),
 
-              CustomInput(
-                controller: passwordController,
+              CustomPasswordInput(
                 hint: "********",
-                label: "Contraseña",
+                controller: passwordController,
                 obscureText: !showPassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    showPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      showPassword = !showPassword;
-                    });
-                  },
-                ),
+                onToggle: () => setState(() => showPassword = !showPassword),
                 validator: passwordValidator,
               ),
 

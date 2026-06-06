@@ -50,12 +50,21 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
   @override
   void initState() {
     super.initState();
+    if (!_isEditing) {
+      final now = DateTime.now();
+      _pickupStart = now;
+      _pickupStartTime = TimeOfDay.fromDateTime(now);
+      _pickupEnd = now.add(const Duration(days: 7));
+      _pickupEndTime = TimeOfDay.fromDateTime(now.add(const Duration(days: 7)));
+    }
     _cargarDatos();
   }
 
   Future<void> _cargarDatos() async {
     _commerceId = await _repo.getCommerceIdInt();
+    if (!mounted) return;
     await _cargarCategorias();
+    if (!mounted) return;
     if (_isEditing) _precargarDatos();
   }
 
@@ -92,7 +101,10 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _categoriasCargadas = true);
+      if (mounted) {
+        setState(() => _categoriasCargadas = true);
+        _showSnack('Error al cargar categorías: ${e.toString().replaceFirst("Exception: ", "")}');
+      }
     }
   }
 
@@ -187,7 +199,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
     if (date != null && mounted) {
       final time = await showTimePicker(
         context: context,
-        initialTime: _pickupStartTime ?? const TimeOfDay(hour: 10, minute: 0),
+        initialTime: _pickupStartTime ?? TimeOfDay.now(),
       );
       if (time != null) {
         setState(() {
@@ -208,7 +220,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
     if (date != null && mounted) {
       final time = await showTimePicker(
         context: context,
-        initialTime: _pickupEndTime ?? const TimeOfDay(hour: 20, minute: 0),
+        initialTime: _pickupEndTime ?? TimeOfDay.now(),
       );
       if (time != null) {
         setState(() {
@@ -326,7 +338,17 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
   }
 
   String _formatDateTime(DateTime date, TimeOfDay time) {
-    return '${date.day}/${date.month} a las ${time.hour}:${time.minute.toString().padLeft(2, '0')}';
+    const days = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+    final dayName = days[date.weekday - 1];
+    final h = time.hour.toString().padLeft(2, '0');
+    final m = time.minute.toString().padLeft(2, '0');
+    return '$dayName ${date.day}/${date.month} $h:$m';
+  }
+
+  String _formatDateOnly(DateTime date) {
+    const days = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+    final dayName = days[date.weekday - 1];
+    return '$dayName ${date.day}/${date.month}/${date.year}';
   }
 
   @override
@@ -449,56 +471,85 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
                     _buildImageSection(),
                     const SizedBox(height: 16),
 
-                    CustomLabel('Inicio de recogida *'),
-                    InkWell(
-                      onTap: _selectPickupStart,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time, color: AppColors.textSecondary),
-                            const SizedBox(width: 12),
-                            Text(
-                              _pickupStart != null && _pickupStartTime != null
-                                  ? _formatDateTime(_pickupStart!, _pickupStartTime!)
-                                  : 'Selecciona fecha y hora',
-                              style: TextStyle(
-                                color: _pickupStart != null ? AppColors.textPrimary : AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    CustomLabel('Fin de recogida *'),
-                    InkWell(
-                      onTap: _selectPickupEnd,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time, color: AppColors.textSecondary),
-                            const SizedBox(width: 12),
-                            Text(
-                              _pickupEnd != null && _pickupEndTime != null
-                                  ? _formatDateTime(_pickupEnd!, _pickupEndTime!)
-                                  : 'Selecciona fecha y hora',
-                              style: TextStyle(
-                                color: _pickupEnd != null ? AppColors.textPrimary : AppColors.textSecondary,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Ventana de recogida',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'La ventana empieza hoy ${_formatDateOnly(DateTime.now())} y dura hasta 7 días.',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          CustomLabel('Inicio *'),
+                          InkWell(
+                            onTap: _selectPickupStart,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.play_arrow, color: AppColors.primary, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _pickupStart != null && _pickupStartTime != null
+                                        ? _formatDateTime(_pickupStart!, _pickupStartTime!)
+                                        : 'Selecciona fecha y hora',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _pickupStart != null ? AppColors.textPrimary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          CustomLabel('Fin *'),
+                          InkWell(
+                            onTap: _selectPickupEnd,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.stop, color: Colors.red, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _pickupEnd != null && _pickupEndTime != null
+                                        ? _formatDateTime(_pickupEnd!, _pickupEndTime!)
+                                        : 'Selecciona fecha y hora',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _pickupEnd != null ? AppColors.textPrimary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -547,7 +598,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
                       fit: StackFit.expand,
                       children: [
                         Image.file(File(_selectedImage!.path), fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, color: AppColors.textSecondary, size: 40),
+                          errorBuilder: (_, _, _) => const Icon(Icons.image_not_supported, color: AppColors.textSecondary, size: 40),
                         ),
                         Positioned(
                           top: 8, right: 8,
@@ -573,7 +624,7 @@ class _ProductFormWidgetState extends State<ProductFormWidget> {
                           fit: StackFit.expand,
                           children: [
                             Image.network(_existingImageUrl!, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                              errorBuilder: (_, _, _) => _buildImagePlaceholder(),
                             ),
                             Positioned(
                               top: 8, right: 8,

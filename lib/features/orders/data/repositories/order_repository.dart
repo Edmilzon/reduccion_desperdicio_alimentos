@@ -5,6 +5,7 @@ import 'package:reduccion_desperdicio_alimentos/core/constants/api_constants.dar
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/order_model.dart';
+import '../models/pickup_validation_result.dart';
 
 class OrderRepository {
   static const String baseUrl = ApiConstants.baseUrl;
@@ -19,32 +20,6 @@ class OrderRepository {
     }
 
     return token;
-  }
-
-  Future<OrderModel> createCashOrder({
-    required int productId,
-    required int quantity,
-  }) async {
-    final token = await _getToken();
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/orders'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'productId': productId,
-        'quantity': quantity,
-        'paymentMethod': 'cash',
-      }),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return OrderModel.fromJson(jsonDecode(response.body));
-    }
-
-    _handleOrderError(response);
   }
 
   Future<OrderModel> createOrder({
@@ -65,7 +40,7 @@ class OrderRepository {
         'quantity': quantity,
         'paymentMethod': paymentMethod,
       }),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return OrderModel.fromJson(jsonDecode(response.body));
@@ -83,7 +58,7 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -102,7 +77,7 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -131,13 +106,13 @@ class OrderRepository {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return OrderModel.fromJson(jsonDecode(response.body));
     }
 
-    final msg = _extractErrorRaw(response);
+    final msg = _extractError(response);
     if (response.statusCode == 400) {
       if (msg.contains('ya fue pagado')) {
         throw OrderException('El pedido ya fue pagado');
@@ -164,13 +139,13 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return OrderModel.fromJson(jsonDecode(response.body));
     }
 
-    final msg = _extractErrorRaw(response);
+    final msg = _extractError(response);
     if (response.statusCode == 400) {
       throw OrderException(msg);
     }
@@ -189,7 +164,7 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return OrderModel.fromJson(jsonDecode(response.body));
@@ -207,13 +182,13 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return OrderModel.fromJson(jsonDecode(response.body));
     }
 
-    final msg = _extractErrorRaw(response);
+    final msg = _extractError(response);
     if (response.statusCode == 400) throw OrderException(msg);
     if (response.statusCode == 401) throw OrderAuthException();
     if (response.statusCode == 403) throw OrderException('No tienes permiso para realizar esta acción');
@@ -230,19 +205,60 @@ class OrderRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return OrderModel.fromJson(jsonDecode(response.body));
     }
 
-    final msg = _extractErrorRaw(response);
+    final msg = _extractError(response);
     if (response.statusCode == 400) throw OrderException(msg);
     if (response.statusCode == 401) throw OrderAuthException();
     if (response.statusCode == 403) throw OrderException('No tienes permiso para realizar esta acción');
     if (response.statusCode == 404) throw OrderException('Pedido no encontrado');
     throw OrderException(msg);
   }
+
+  Future<PickupValidationResult> validatePickup({
+  required String reservationCode,
+}) async {
+  final token = await _getToken();
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/orders/validate-pickup'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'reservationCode': reservationCode.trim(),
+    }),
+  ).timeout(const Duration(seconds: 15));
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    return PickupValidationResult.fromJson(jsonDecode(response.body));
+  }
+
+  final message = _extractError(response);
+
+  if (response.statusCode == 400) {
+    throw OrderException(message);
+  }
+
+  if (response.statusCode == 401) {
+    throw OrderAuthException();
+  }
+
+  if (response.statusCode == 403) {
+    throw OrderException('No tienes permiso para validar este pedido');
+  }
+
+  if (response.statusCode == 404) {
+    throw OrderException('Código inválido');
+  }
+
+  throw OrderException(message);
+}
 
   Never _handleOrderError(http.Response response) {
     final message = _extractError(response);
@@ -293,14 +309,6 @@ class OrderRepository {
     }
   }
 
-  String _extractErrorRaw(http.Response response) {
-    try {
-      final data = jsonDecode(response.body);
-      return data['message']?.toString() ?? 'Error desconocido';
-    } catch (_) {
-      return 'Error de conexión con el servidor (${response.statusCode})';
-    }
-  }
 }
 
 class OrderException implements Exception {

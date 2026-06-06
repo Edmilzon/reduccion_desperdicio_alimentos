@@ -46,7 +46,7 @@ class ProductRepository {
     if (query.isEmpty) return [];
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/products/search?q=$query'),
+        Uri.parse('$baseUrl/products/search?q=${Uri.encodeComponent(query)}'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -66,8 +66,8 @@ class ProductRepository {
     int? commerceId,
   }) async {
     final queryParams = <String>[];
-    if (categoryId != null) queryParams.add('categoryId=$categoryId');
-    if (commerceId != null) queryParams.add('commerceId=$commerceId');
+    if (categoryId != null) queryParams.add('categoryId=${Uri.encodeComponent(categoryId.toString())}');
+    if (commerceId != null) queryParams.add('commerceId=${Uri.encodeComponent(commerceId.toString())}');
 
     final url = queryParams.isNotEmpty
         ? '$baseUrl/products?${queryParams.join('&')}'
@@ -96,8 +96,8 @@ class ProductRepository {
     int? categoryId,
   }) async {
     final queryParams = <String>[];
-    if (status != null) queryParams.add('status=$status');
-    if (categoryId != null) queryParams.add('categoryId=$categoryId');
+    if (status != null) queryParams.add('status=${Uri.encodeComponent(status)}');
+    if (categoryId != null) queryParams.add('categoryId=${Uri.encodeComponent(categoryId.toString())}');
 
     final url = queryParams.isNotEmpty
         ? '$baseUrl/products/commerce/$commerceId?${queryParams.join('&')}'

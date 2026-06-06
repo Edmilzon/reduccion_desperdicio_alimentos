@@ -252,7 +252,9 @@ class FeaturedProductCard extends StatelessWidget {
 
   String _formatTimeRange(DateTime start, DateTime end) {
     final startHour = start.hour.toString().padLeft(2, '0');
+    final startMin = start.minute.toString().padLeft(2, '0');
     final endHour = end.hour.toString().padLeft(2, '0');
-    return '$startHour:00 - $endHour:00';
+    final endMin = end.minute.toString().padLeft(2, '0');
+    return '$startHour:$startMin - $endHour:$endMin';
   }
 }

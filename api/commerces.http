@@ -1,4 +1,4 @@
-@baseURL = https://reduccion-desperdicio-backend.vercel.app/
+@baseURL = https://reduccion-desperdicio-backend.vercel.app
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIwLCJlbWFpbCI6ImNvbWVyY2lhbnRlX3Rlc3RfMTc3OTQ4ODYwNEB0ZXN0LmNvbSIsInJvbGUiOiJtZXJjaGFudCIsImlhdCI6MTc3OTQ4ODYwOCwiZXhwIjoxNzc5NTc1MDA4fQ.yENiTVhCTwsrnAsoAeR9144iGJPsPkKjS3u66hX9XW0
 @commerceId = 1
 
@@ -6,57 +6,64 @@
 # FLUJO DE COMERCIOS / RESTAURANTES
 # ────────────────────────────────────────────
 #
-# ENDPOINTS PÚBLICOS (GET):
-#   • GET /commerces          → lista completa con owner
-#   • GET /commerces/list/all → solo id + name (para selects)
-#   • GET /commerces/nearby   → filtro por distancia (Haversine)
-#   • GET /commerces/by-address → geocodifica con Nominatim + distancia
-#   • GET /commerces/:id      → un comercio
-#   • GET /commerces/:id/products → productos activos de ese comercio
-#   • GET /restaurants/:id/detail → detalle completo con ofertas activas
+# ENDPOINTS PÚBLICOS:
+#   • GET /commerces               → lista con owner
+#   • GET /commerces/list/all      → solo id + name (para selects)
+#   • GET /commerces/nearby        → por coordenadas + distancia (filtro category opcional)
+#   • GET /commerces/by-address    → geocodifica Nominatim + distancia
+#   • GET /commerces/:id           → un comercio (con owner)
+#   • GET /commerces/:id/products  → productos activos de ese comercio
+#   • GET /restaurants/nearby      → igual que /commerces/nearby (duplicado)
+#   • GET /restaurants/categories  → categorías con productos activos actualmente
+#   • GET /restaurants/:id/detail  → detalle completo con ofertas activas
 #
-# ENDPOINTS PROTEGIDOS (requieren JWT):
-#   • POST   /commerces       → crear (cualquier usuario autenticado)
-#   • PATCH  /commerces/:id   → actualizar (solo owner)
-#   • DELETE /commerces/:id   → eliminar (solo owner, físico)
+# ENDPOINTS PROTEGIDOS (JWT):
+#   • POST   /commerces     → crear (cualquier usuario autenticado)
+#   • PATCH  /commerces/:id → actualizar (solo owner)
+#   • DELETE /commerces/:id → eliminar (solo owner, físico)
 #
 # ────────────────────────────────────────────
 
-### Listar todos los comercios (con owner)
+### Listar todos los comercios (con owner, sin locations ni products)
 GET {{baseURL}}/commerces
 # 200 → [ { id, name, description, latitude, longitude, rating, imageUrl, nit,
-#           owner: { id, email }, locations: [...], createdAt, updatedAt } ]
+#           owner: { id, email, role }, createdAt, updatedAt } ]
 
 ### Listar solo IDs y nombres (para combos/selects)
 GET {{baseURL}}/commerces/list/all
 # 200 → [ { id, name } ]
 
-### Buscar comercios cercanos por coordenadas (Haversine, radius en km)
+### Buscar comercios cercanos por coordenadas (Haversine)
 GET {{baseURL}}/commerces/nearby?lat=-16.5&lng=-68.15&radius=5
-# 200 → [ { id, name, latitude, longitude, rating, imageUrl, distance (en km) } ]
-# Si no se envía radius, usa 0 km (solo coordenadas exactas)
+# 200 → [ { id, name, restaurantId, branchName, description, latitude, longitude,
+#           rating, imageUrl, distance (km), availableOffers, hasActiveOffers,
+#           pickupLimit (HH:mm) } ]
+# Query opcional: &category=panaderia (slug o id numérico)
+#   → filtra solo locations con productos activos de esa categoría
+# Si radius ≤ 0 o no se envía, busca sin límite de distancia
 # Errores:
 #   400 → faltan lat/lng
 
-### Buscar comercios cercanos por dirección (usa Nominatim para geocodificar)
+### Buscar comercios cercanos por dirección (Nominatim → coordenadas → Haversine)
 GET {{baseURL}}/commerces/by-address?address=La Paz, Bolivia&radius=5
-# 200 → [ { id, name, latitude, longitude, ... } ]
-# Interno: geocodifica address → coordenadas → Haversine
+# 200 → mismo formato que /nearby
+# Interno: geocodifica address → coordenadas → findActiveByCoordinates
 # Errores:
 #   400 → falta address
 #   404 → no se pudo geocodificar la dirección
 
-### Obtener comercio por ID
+### Obtener comercio por ID (con owner, sin locations ni products)
 GET {{baseURL}}/commerces/{{commerceId}}
 # 200 → { id, name, description, latitude, longitude, rating, imageUrl, nit,
-#         owner: { id, email, role }, locations: [...], products: [...],
-#         createdAt, updatedAt }
+#         owner: { id, email, role }, createdAt, updatedAt }
 # Errores:
 #   404 → commerce no encontrado
 
 ### Productos activos de un comercio
 GET {{baseURL}}/commerces/{{commerceId}}/products
-# 200 → [ { id, title, price, originalPrice, quantity, imageUrl, status, ... } ]
+# 200 → { commerce: { id, name, description, ... },
+#          products: [ { id, title, price, originalPrice, quantity, imageUrl,
+#                        status, category: { id, name, slug }, ... } ] }
 # Solo productos con status = "active"
 
 ### Crear comercio (requiere auth)
@@ -95,18 +102,26 @@ Content-Type: application/json
 ### Eliminar comercio (solo owner, eliminación física en cascada)
 DELETE {{baseURL}}/commerces/{{commerceId}}
 Authorization: Bearer {{token}}
-# 200 → { message: "Comercio eliminado correctamente" }
+# 200 → raw commerce entity eliminado (NO es un mensaje)
 # Errores:
 #   401 → no autenticado
 #   403 → no eres el owner
 #   404 → commerce no encontrado
 
+### Buscar restaurantes cercanos (mismo que /commerces/nearby, duplicado)
+GET {{baseURL}}/restaurants/nearby?lat=-16.5&lng=-68.15&radius=5
+# 200 → mismo formato que /commerces/nearby
+# Query opcional: &category=panaderia
+
+### Categorías activas (con productos activos y stock en este momento)
+GET {{baseURL}}/restaurants/categories
+# 200 → [ { id, name, slug, createdAt, updatedAt } ]
+# Solo categorías que tienen al menos un producto con status=active, quantity>0
+# y pickupEnd >= ahora
+
 ### Detalle completo de restaurante con ofertas activas
 GET {{baseURL}}/restaurants/{{commerceId}}/detail
-# 200 → { id, name, description, latitude, longitude, rating, imageUrl, nit,
-#         owner: { id, email, name },
-#         locations: [ { id, name, latitude, longitude, description, phone } ],
-#         offers: [ { id, title, price, originalPrice, quantity, imageUrl,
-#                    pickupStart, pickupEnd, status } ],
-#         createdAt, updatedAt }
-# offers = productos activos con pickup_end >= ahora
+# 200 → { id, name, description, address, phone, isActive,
+#         offers: [ { id, name, description, originalPrice, price, quantity,
+#                    pickupDeadline, expiryDate } ] }
+# offers = productos activos con status=active

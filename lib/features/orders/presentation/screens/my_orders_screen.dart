@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
+import 'package:reduccion_desperdicio_alimentos/core/services/notification_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/models/product_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/data/repositories/product_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/models/order_model.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/data/repositories/order_repository.dart';
-import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/widgets/payment_dialog.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/countdown_timer.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -49,59 +49,129 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
-  Future<void> _payOrder(OrderModel order) async {
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (_) => PaymentDialog(order: order),
-    );
-    if (result == null || !mounted) return;
+  void _showQrDialog(OrderModel order) {
+    final qrData = order.reservationCode.isNotEmpty
+        ? order.reservationCode
+        : 'ECO-${order.id}';
 
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Código de recogida', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 212,
+                height: 212,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: QrImageView(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 180,
+                  backgroundColor: Colors.white,
+                  errorStateBuilder: (_, __) => Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.grey, size: 32),
+                        const SizedBox(height: 4),
+                        Text(
+                          qrData,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(qrData, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 2)),
+            const SizedBox(height: 8),
+            Text('Preséntalo al recoger tu pedido en ${order.commerceName ?? 'el restaurante'}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+          if (order.paymentMethod == 'online' && !order.isPaid)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                if (!mounted) return;
+                try {
+                  final updated = await _repository.payOrder(orderId: order.id);
+                  final i = _orders.indexWhere((o) => o.id == updated.id);
+                  if (i >= 0 && mounted) {
+                    setState(() => _orders[i] = updated);
+                  }
+                  if (mounted) {
+                    NotificationService.showWithChannel(
+                      id: order.id + 7000,
+                      title: ' Pago confirmado',
+                      body: 'Tu pago para "${order.productTitle ?? 'el pedido'}" fue procesado correctamente',
+                      channelId: 'order_reminder',
+                    );
+                    _showSuccessDialog(context);
+                  }
+                } catch (_) {
+                  if (!mounted) return;
+                  try {
+                    final freshOrders = await _repository.getMyOrders();
+                    final paid = freshOrders.where((o) => o.id == order.id && o.isPaid).firstOrNull;
+                    if (mounted) {
+                      if (paid != null) {
+                        final i = _orders.indexWhere((o) => o.id == paid.id);
+                        if (i >= 0) setState(() => _orders[i] = paid);
+                        NotificationService.showWithChannel(
+                          id: paid.id + 7000,
+                          title: ' Pago confirmado',
+                          body: 'Tu pago para "${paid.productTitle ?? 'el pedido'}" fue procesado correctamente',
+                          channelId: 'order_reminder',
+                        );
+                        _showSuccessDialog(context);
+                      } else {
+                        setState(() => _orders = freshOrders);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Error al procesar el pago'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  } catch (_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error al procesar el pago'), backgroundColor: Colors.red),
+                      );
+                      _loadOrders();
+                    }
+                  }
+                }
+              },
+              child: const Text('Confirmar pago', style: TextStyle(color: Colors.white)),
+            ),
+        ],
+      ),
     );
-
-    try {
-      final updated = await _repository.payOrder(
-        orderId: order.id,
-        paymentProvider: result['provider'] ?? 'stripe',
-        transactionId: result['transactionId'],
-      );
-      if (mounted) {
-        Navigator.pop(context);
-        _showPaymentSuccess(updated);
-      }
-    } on OrderException catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        if (e.message.contains('ya fue pagado')) {
-          _showPaymentSuccess(OrderModel(
-            id: order.id,
-            reservationCode: order.reservationCode,
-            quantity: order.quantity,
-            totalPrice: order.totalPrice,
-            paymentMethod: order.paymentMethod,
-            paymentStatus: 'paid',
-            deliveryStatus: order.deliveryStatus,
-            status: order.status,
-            productTitle: order.productTitle,
-            commerceName: order.commerceName,
-            paidAt: DateTime.now(),
-          ));
-        } else {
-          _showPaymentError(e.message);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        _showPaymentError('Pago no realizado, verifica el estado del pedido');
-      }
-    }
   }
 
-  void _showPaymentSuccess(OrderModel order) {
+  void _showSuccessDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -109,140 +179,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 26),
             SizedBox(width: 10),
-            Expanded(child: Text('Pago Confirmado', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            Expanded(child: Text('Pago registrado', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow('Producto', order.productTitle ?? ''),
-            const SizedBox(height: 4),
-            _detailRow('Total', '\$${order.totalPrice.toStringAsFixed(2)}'),
-            const SizedBox(height: 4),
-            _detailRow('Código', order.reservationCode),
-            if (order.paidAt != null) ...[
-              const SizedBox(height: 4),
-              _detailRow('Pagado el', _formatDate(order.paidAt)),
-            ],
+            Text('Solo falta recoger tu pedido.', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            SizedBox(height: 8),
+            Text('Presenta tu código QR al llegar al restaurante.', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _loadOrders();
-            },
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Aceptar'),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showPaymentError(String message) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red, size: 26),
-            SizedBox(width: 10),
-            Expanded(child: Text('Pago Fallido', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.amber.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Si el pago ya se realizó, puedes verificar el estado actualizando la lista de pedidos.',
-                style: TextStyle(fontSize: 12, color: AppColors.darkBrown),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _loadOrders();
-            },
-            child: const Text('Verificar estado'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, String value) {
-    return Row(
-      children: [
-        Text('$label: ', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        Flexible(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-      ],
-    );
-  }
-
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '';
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final year = dt.year;
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '$day/$month/$year $hour:$min';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        title: const Text('Mis Pedidos', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 22)),
-        centerTitle: true,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _loadOrders, child: const Text('Reintentar')),
-                    ],
-                  ),
-                )
-              : _orders.isEmpty
-                  ? _buildEmpty()
-                  : _buildList(),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text('No tienes pedidos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          Text('Realiza tu primera reserva', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ],
       ),
     );
@@ -284,6 +237,56 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Mis Pedidos', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 22)),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadOrders, child: const Text('Reintentar')),
+                    ],
+                  ),
+                )
+              : _orders.isEmpty
+                  ? _buildEmpty()
+                  : _buildList(),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text('No tienes pedidos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          Text('Realiza tu primera reserva', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
   Widget _buildList() {
     return RefreshIndicator(
       onRefresh: _loadOrders,
@@ -293,10 +296,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         itemBuilder: (_, i) => _OrderCard(
           order: _orders[i],
           commerce: _commerceMap[_orders[i].commerceId],
-          onPay: !_orders[i].isCash && _orders[i].isPendingPayment
-              ? () => _payOrder(_orders[i])
-              : null,
-          onCancel: _orders[i].status != 'cancelled' && _orders[i].status != 'confirmed'
+          onShowQr: () => _showQrDialog(_orders[i]),
+          onCancel: _orders[i].status != 'cancelled' &&
+                  _orders[i].status != 'confirmed' &&
+                  _orders[i].deliveryStatus == 'pending'
               ? () => _cancelOrder(_orders[i])
               : null,
         ),
@@ -308,10 +311,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 class _OrderCard extends StatelessWidget {
   final OrderModel order;
   final CommerceModel? commerce;
-  final VoidCallback? onPay;
+  final VoidCallback? onShowQr;
   final VoidCallback? onCancel;
 
-  const _OrderCard({required this.order, this.commerce, this.onPay, this.onCancel});
+  const _OrderCard({
+    required this.order,
+    this.commerce,
+    this.onShowQr,
+    this.onCancel,
+  });
 
   void _openMaps(BuildContext context) {
     if (commerce?.latitude == null || commerce?.longitude == null) return;
@@ -323,36 +331,6 @@ class _OrderCard extends StatelessWidget {
     if (commerce?.latitude == null || commerce?.longitude == null) return;
     final url = 'https://waze.com/ul?ll=${commerce!.latitude},${commerce!.longitude}&navigate=yes';
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  }
-
-  void _showQrCode(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardBg,
-        title: const Text('Código de recogida', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            QrImageView(
-              data: order.reservationCode,
-              version: QrVersions.auto,
-              size: 220,
-              backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square),
-              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square),
-            ),
-            const SizedBox(height: 16),
-            Text(order.reservationCode, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 2)),
-            const SizedBox(height: 8),
-            Text('Preséntalo al recoger tu pedido en ${order.commerceName ?? 'el restaurante'}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
-        ],
-      ),
-    );
   }
 
   @override
@@ -397,7 +375,7 @@ class _OrderCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           GestureDetector(
-            onTap: () => _showQrCode(context),
+            onTap: order.reservationCode.isEmpty ? null : onShowQr,
             child: Row(
               children: [
                 const Icon(Icons.qr_code, size: 14, color: AppColors.primary),
@@ -529,30 +507,40 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ],
-          if (order.isCash && !order.isPaid) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-              decoration: BoxDecoration(
-                color: AppColors.amber.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('Pagarás en efectivo al recoger', style: TextStyle(fontSize: 12, color: AppColors.darkBrown)),
-            ),
-          ],
-          if (onPay != null) ...[
+          if (order.paymentMethod == 'online' && !order.isPaid) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                onPressed: onPay,
-                child: const Text('Pagar ahora', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                icon: const Icon(Icons.qr_code, color: Colors.white, size: 20),
+                label: const Text('Pagar con QR', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                onPressed: onShowQr,
+              ),
+            ),
+          ],
+          if (order.paymentMethod == 'cash' && !order.isPaid) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.money, size: 18, color: AppColors.darkBrown),
+                  SizedBox(width: 8),
+                  Text(
+                    'Pagarás en efectivo al recoger.',
+                    style: TextStyle(fontSize: 13, color: AppColors.darkBrown, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
             ),
           ],

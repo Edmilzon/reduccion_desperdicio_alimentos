@@ -20,10 +20,12 @@ class RestaurantDetailRepository {
       if (token != null) 'Authorization': 'Bearer $token',
     };
 
-    final response = await http.get(
-      Uri.parse('$_baseUrl/commerces/$commerceId'),
-      headers: headers,
-    );
+    final response = await http
+        .get(
+          Uri.parse('$_baseUrl/commerces/$commerceId/products'),
+          headers: headers,
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;

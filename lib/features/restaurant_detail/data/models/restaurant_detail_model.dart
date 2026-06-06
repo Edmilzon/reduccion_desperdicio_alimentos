@@ -3,8 +3,6 @@ class RestaurantDetailModel {
   final String name;
   final String? description;
   final String? address;
-  final String? openTime;
-  final String? closeTime;
   final double? latitude;
   final double? longitude;
   final String? nit;
@@ -15,8 +13,6 @@ class RestaurantDetailModel {
     required this.name,
     this.description,
     this.address,
-    this.openTime,
-    this.closeTime,
     this.latitude,
     this.longitude,
     this.nit,
@@ -24,19 +20,18 @@ class RestaurantDetailModel {
   });
 
   factory RestaurantDetailModel.fromJson(Map<String, dynamic> json) {
+    final commerceData = json['commerce'] as Map<String, dynamic>? ?? json;
     final productsJson = json['products'] as List<dynamic>?;
     return RestaurantDetailModel(
-      id: json['id'] is int
-          ? json['id'] as int
-          : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
-      name: json['name']?.toString() ?? '',
-      description: json['description']?.toString(),
-      address: json['address']?.toString(),
-      openTime: json['openTime']?.toString(),
-      closeTime: json['closeTime']?.toString(),
-      latitude: _parseDouble(json['latitude']),
-      longitude: _parseDouble(json['longitude']),
-      nit: json['nit']?.toString(),
+      id: commerceData['id'] is int
+          ? commerceData['id'] as int
+          : int.tryParse(commerceData['id']?.toString() ?? '0') ?? 0,
+      name: commerceData['name']?.toString() ?? '',
+      description: commerceData['description']?.toString(),
+      address: commerceData['address']?.toString(),
+      latitude: _parseDouble(commerceData['latitude']),
+      longitude: _parseDouble(commerceData['longitude']),
+      nit: commerceData['nit']?.toString(),
       offers: productsJson
               ?.map((p) =>
                   RestaurantOfferModel.fromJson(p as Map<String, dynamic>))
@@ -54,13 +49,6 @@ class RestaurantDetailModel {
 
   bool get hasCoordinates => latitude != null && longitude != null;
   bool get hasOffers => offers.isNotEmpty;
-
-  String get scheduleText {
-    if (openTime != null && closeTime != null) {
-      return '$openTime - $closeTime';
-    }
-    return 'Horario no disponible';
-  }
 }
 
 class RestaurantOfferModel {
@@ -117,5 +105,5 @@ class RestaurantOfferModel {
     return 0;
   }
 
-  bool get isAvailable => status == 'active' && quantity > 0;
+  bool get isAvailable => status == 'active' && quantity > 0 && pickupEnd.isAfter(DateTime.now());
 }

@@ -21,7 +21,6 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
 
   final ownerController = TextEditingController();
   final commerceController = TextEditingController();
-  final phoneController = TextEditingController();
   final nitController = TextEditingController();
   final descriptionController = TextEditingController();
 
@@ -49,17 +48,6 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
     final regex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$');
     if (!regex.hasMatch(value)) {
       return "Solo letras permitidas";
-    }
-    return null;
-  }
-
-  String? phoneValidator(String? value) {
-    if (value == null || value.isEmpty) {
-      return "El teléfono es obligatorio";
-    }
-    final regex = RegExp(r'^[0-9]{8,12}$');
-    if (!regex.hasMatch(value)) {
-      return "Debe tener entre 8 y 12 dígitos";
     }
     return null;
   }
@@ -143,16 +131,6 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
 
               const SizedBox(height: 15),
 
-              const CustomLabel("Teléfono"),
-              CustomInput(
-                hint: "+591 7XXXXXXX",
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                validator: phoneValidator,
-              ),
-
-              const SizedBox(height: 15),
-
               const CustomLabel("NIT (opcional)"),
               CustomInput(
                 hint: "Ej: 123456789",
@@ -204,16 +182,10 @@ class _CommerceRegisterScreenState extends State<CommerceRegisterScreen> {
               CustomButton(
                 text: "SIGUIENTE",
                 isLoading: isLoading,
-                onPressed: () async {
+                onPressed: () {
                   if (!_formKey.currentState!.validate()) return;
 
-                  final navigator = Navigator.of(context);
-                  setState(() => isLoading = true);
-
-                  setState(() => isLoading = false);
-
-                  if (!mounted) return;
-                  navigator.push(
+                  Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => CommerceAccessScreen(
                         ownerName: ownerController.text.trim(),

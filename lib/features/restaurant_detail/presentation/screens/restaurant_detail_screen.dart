@@ -3,18 +3,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/restaurant_detail_model.dart';
 import '../../data/repositories/restaurant_detail_repository.dart';
-import '../../domain/usecases/get_restaurant_detail_usecase.dart';
-import '../controllers/restaurant_detail_controller.dart';
 import '../widgets/offer_card.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final int commerceId;
-  final RestaurantDetailModel? mockDetail;
 
   const RestaurantDetailScreen({
     super.key,
     required this.commerceId,
-    this.mockDetail,
   });
 
   @override
@@ -22,43 +18,57 @@ class RestaurantDetailScreen extends StatefulWidget {
 }
 
 class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
-  late final RestaurantDetailController _controller;
+  final RestaurantDetailRepository _repository = RestaurantDetailRepository();
+
+  RestaurantDetailModel? _detail;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _controller = RestaurantDetailController(
-      GetRestaurantDetailUseCase(RestaurantDetailRepository()),
-    );
-    _controller.addListener(_onStateChange);
-    if (widget.mockDetail != null) {
-      _controller.loadMock(widget.mockDetail!);
-    } else {
-      _controller.loadDetail(widget.commerceId);
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
+    if (!mounted) return;
+    setState(() { _isLoading = true; _errorMessage = null; });
+
+    try {
+      final detail = await _repository.getRestaurantDetail(widget.commerceId);
+      if (!mounted) return;
+      setState(() { _detail = detail; _isLoading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
     }
   }
 
-  void _onStateChange() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_onStateChange);
-    _controller.dispose();
-    super.dispose();
-  }
-
   Future<void> _openMap(double lat, double lng) async {
-    final uri = Uri.parse(
+    final googleUri = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir el mapa')),
-      );
+    final geoUri = Uri.parse('geo:$lat,$lng');
+
+    try {
+      if (await canLaunchUrl(googleUri)) {
+        await launchUrl(googleUri, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(geoUri)) {
+        await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el mapa')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al abrir el mapa')),
+        );
+      }
     }
   }
 
@@ -87,16 +97,13 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   }
 
   Widget _buildBody() {
-    switch (_controller.status) {
-      case RestaurantDetailStatus.loading:
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        );
-      case RestaurantDetailStatus.error:
-        return _buildError();
-      case RestaurantDetailStatus.loaded:
-        return _buildContent(_controller.detail!);
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
+    if (_errorMessage != null) return _buildError();
+    return _buildContent(_detail!);
   }
 
   Widget _buildError() {
@@ -109,14 +116,14 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             const Icon(Icons.error_outline, size: 56, color: AppColors.textLight),
             const SizedBox(height: 16),
             Text(
-              _controller.errorMessage,
+              _errorMessage!,
               style: const TextStyle(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              onPressed: () => _controller.loadDetail(widget.commerceId),
+              onPressed: _loadDetail,
               child: const Text(
                 'Reintentar',
                 style: TextStyle(color: Colors.white),
@@ -159,12 +166,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
               text: detail.address!,
               color: AppColors.secondary,
             ),
-          const SizedBox(height: 8),
-          _InfoChip(
-            icon: Icons.access_time,
-            text: detail.scheduleText,
-            color: AppColors.olive,
-          ),
           if (detail.hasCoordinates) ...[
             const SizedBox(height: 16),
             SizedBox(
@@ -200,7 +201,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
           if (!detail.hasOffers)
             _buildEmptyOffers()
           else
-            ...detail.offers.map((offer) => OfferCard(offer: offer)),
+            ...detail.offers
+                .where((o) => o.isAvailable)
+                .map((offer) => OfferCard(offer: offer)),
         ],
       ),
     );

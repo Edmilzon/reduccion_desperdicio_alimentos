@@ -22,13 +22,15 @@ class DashboardRepository {
 
   Future<int> getCommerceIdInt() async {
     String? id = await _getCommerceId();
-    if (id == null) {
-      id = await _fetchCommerceIdFromApi();
-    }
+    id ??= await _fetchCommerceIdFromApi();
     if (id == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
     final parsed = int.tryParse(id);
     if (parsed == null) throw Exception('ID de comercio inválido. Revisa SharedPreferences.');
     return parsed;
+  }
+
+  Map<String, dynamic>? _extractCommerce(Map<String, dynamic> data) {
+    return data['commerce'] ?? data['user']?['commerce'];
   }
 
   Future<String?> _fetchCommerceIdFromApi({bool clearOnAuthError = true}) async {
@@ -42,11 +44,12 @@ class DashboardRepository {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['commerce'] != null) {
-          final id = data['commerce']['id']?.toString();
+        final commerce = _extractCommerce(data);
+        if (commerce != null) {
+          final id = commerce['id']?.toString();
           if (id != null) {
             await prefs.setString(_commerceIdKey, id);
           }
@@ -73,7 +76,7 @@ class DashboardRepository {
     final response = await http.get(
       Uri.parse('$baseUrl/products/categories'),
       headers: {'Content-Type': 'application/json'},
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -88,23 +91,20 @@ class DashboardRepository {
     if (token == null) throw Exception('No hay sesión');
     
     String? commerceId = await _getCommerceId();
-    if (commerceId == null) {
-      commerceId = await _fetchCommerceIdFromApi(clearOnAuthError: false);
-    }
+    commerceId ??= await _fetchCommerceIdFromApi(clearOnAuthError: false);
     if (commerceId == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/commerces/$commerceId/products'),
+      Uri.parse('$baseUrl/products/commerce/$commerceId?status=all'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List<dynamic> products = data['products'] ?? [];
-      return products.map((json) => OfertaModel.fromJson(json)).toList();
+      final List<dynamic> products = jsonDecode(response.body) as List<dynamic>? ?? [];
+      return products.map((json) => OfertaModel.fromJson(json as Map<String, dynamic>)).toList();
     } else {
       throw Exception('Error al cargar ofertas');
     }
@@ -115,12 +115,12 @@ class DashboardRepository {
     if (token == null) throw Exception('No hay sesión');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/dashboard/commerce/$commerceId'),
+      Uri.parse('$baseUrl/products/commerce/$commerceId/stats'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -162,7 +162,7 @@ class DashboardRepository {
         'categoryId': categoryId,
         if (imageUrl != null) 'imageUrl': imageUrl,
       }),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
@@ -188,10 +188,11 @@ class DashboardRepository {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(productData),
-    );
+    ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) {
-      throw Exception('Error al actualizar producto');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final msg = _extractError(response);
+      throw Exception(msg);
     }
   }
 
@@ -214,7 +215,7 @@ class DashboardRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-    );
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       final msg = _extractError(response);
