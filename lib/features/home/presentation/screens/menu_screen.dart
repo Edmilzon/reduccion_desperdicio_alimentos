@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/services/cart_repository.dart';
 import '../../../../core/services/favorites_repository.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
@@ -15,7 +16,7 @@ class MenuScreen extends StatefulWidget {
   State<MenuScreen> createState() => _MenuScreenState();
 }
 
-class _MenuScreenState extends State<MenuScreen> {
+class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
   final ProductRepository _repository = ProductRepository();
   final FavoritesRepository _favoritesRepo = FavoritesRepository();
   List<ProductModel> _products = [];
@@ -27,14 +28,25 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadProducts();
     _checkExpiringFavorites();
     FavoritesRepository.notifier.addListener(_onFavoritesChanged);
+    CartRepository.notifier.addListener(_loadProducts);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadProducts();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FavoritesRepository.notifier.removeListener(_onFavoritesChanged);
+    CartRepository.notifier.removeListener(_loadProducts);
     super.dispose();
   }
 
@@ -52,7 +64,7 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       final products = await _repository.getProductsWithFilters();
       setState(() {
-        _products = products;
+        _products = products.where((p) => p.isAvailable).toList();
         _isLoading = false;
       });
     } catch (e) {

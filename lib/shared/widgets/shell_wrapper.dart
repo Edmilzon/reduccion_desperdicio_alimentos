@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/custom_navbar.dart';
 
-class ShellWrapper extends StatelessWidget {
+class ShellWrapper extends StatefulWidget {
   final Widget child;
 
   const ShellWrapper({
@@ -11,10 +11,15 @@ class ShellWrapper extends StatelessWidget {
   });
 
   @override
+  State<ShellWrapper> createState() => _ShellWrapperState();
+}
+
+class _ShellWrapperState extends State<ShellWrapper> {
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: child,
+      body: widget.child,
       bottomNavigationBar: CustomNavbar(
         currentIndex: 0,
         onTap: (index) {

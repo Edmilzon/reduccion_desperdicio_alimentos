@@ -7,6 +7,8 @@ import 'package:reduccion_desperdicio_alimentos/core/services/notification_sched
 import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/auth_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/product_detail_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 import 'package:reduccion_desperdicio_alimentos/routes/app_routes.dart';
 
@@ -29,11 +31,14 @@ void main() async {
   };
 
   await NotificationService.init();
+  NotificationService.requestPermission();
   NotificationScheduler.start();
 
   final prefs = await SharedPreferences.getInstance();
   runApp(MyApp(prefs: prefs));
 }
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatefulWidget {
   final SharedPreferences prefs;
@@ -51,7 +56,32 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    NotificationService.onNotificationOpened = _handleNotificationTap;
     _checkAuth();
+  }
+
+  void _handleNotificationTap(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+
+    if (payload.startsWith('product:')) {
+      final id = int.tryParse(payload.substring(8));
+      if (id != null) {
+        nav.push(MaterialPageRoute(
+          builder: (_) => ProductDetailScreen(productId: id),
+        ));
+      }
+    } else if (payload.startsWith('order:')) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => const MyOrdersScreen(),
+      ));
+    } else if (payload == 'merchant_orders') {
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _checkAuth() async {
@@ -110,7 +140,8 @@ class _MyAppState extends State<MyApp> {
           scrolledUnderElevation: 0,
         ),
       ),
-home: _checkingAuth
+      navigatorKey: navigatorKey,
+      home: _checkingAuth
             ? const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               )

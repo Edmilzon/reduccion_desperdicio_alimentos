@@ -5,11 +5,12 @@ import 'package:reduccion_desperdicio_alimentos/features/auth/data/repositories/
 import 'package:reduccion_desperdicio_alimentos/features/auth/presentation/screens/login_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/client_home_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/favorites_screen.dart';
-import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/alerts_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/merchant_pending_orders_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/my_orders_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:reduccion_desperdicio_alimentos/shared/widgets/main_shell.dart';
 import 'package:reduccion_desperdicio_alimentos/features/orders/presentation/screens/validate_pickup_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/home/presentation/screens/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isMerchant;
@@ -156,6 +157,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            _buildMenuItem(
+              icon: Icons.edit,
+              title: 'Editar Perfil',
+              subtitle: 'Actualizar tu información personal',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditProfileScreen(isMerchant: _isActuallyMerchant),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             if (_isActuallyMerchant) ...[
               _buildMenuItem(
                 icon: Icons.storefront,
@@ -200,22 +213,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                },
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+               icon: Icons.qr_code_scanner,
+               title: 'Validar entrega',
+               subtitle: 'Confirmar recogida con código',
+               onTap: () {
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (_) => const ValidatePickupScreen(),
+                   ),
+                 );
+               },
              ),
-             const SizedBox(height: 8),
-             _buildMenuItem(
-              icon: Icons.qr_code_scanner,
-              title: 'Validar entrega',
-              subtitle: 'Confirmar recogida con código',
-              onTap: () {
-                Navigator.push(
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                icon: Icons.notifications,
+                title: 'Notificaciones',
+                subtitle: 'Configurar alertas',
+                onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ValidatePickupScreen(),
-                  ),
-                );
-              },
-            ),
-            ] else ...[
+                  MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+                ),
+              ),
+             ] else ...[
               _buildMenuItem(
                 icon: Icons.shopping_bag,
                 title: 'Mis Pedidos',
@@ -234,29 +257,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               _buildMenuItem(
-                icon: Icons.location_on,
-                title: 'Mis Direcciones',
-                subtitle: 'Gestionar direcciones de entrega',
-                onTap: () {},
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
                 icon: Icons.notifications,
                 title: 'Notificaciones',
                 subtitle: 'Configurar alertas',
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AlertsScreen()),
+                  MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
                 ),
               ),
             ],
-            const SizedBox(height: 8),
-            _buildMenuItem(
-              icon: Icons.settings,
-              title: 'Configuración',
-              subtitle: 'Ajustes de la cuenta',
-              onTap: () {},
-            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,

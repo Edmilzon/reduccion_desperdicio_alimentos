@@ -53,7 +53,7 @@ class _ShopScreenState extends State<ShopScreen> {
       if (mounted) {
         setState(() {
           _categories = categories;
-          _filteredProducts = products;
+          _filteredProducts = products.where((p) => p.isAvailable).toList();
           _commerces = commerces;
           _isLoading = false;
         });
@@ -86,7 +86,7 @@ class _ShopScreenState extends State<ShopScreen> {
       final allCommerces = await _repository.getCommerces();
       if (mounted) {
         setState(() {
-          _filteredProducts = results;
+          _filteredProducts = results.where((p) => p.isAvailable).toList();
           _commerces = allCommerces;
           _isLoading = false;
         });
@@ -411,6 +411,8 @@ class _ShopScreenState extends State<ShopScreen> {
             p.description.toLowerCase().contains(q);
       }).toList();
     }
+
+    filtered = filtered.where((p) => p.isAvailable).toList();
 
     if (_status != 'all') {
       filtered = filtered.where((p) => p.status == _status).toList();

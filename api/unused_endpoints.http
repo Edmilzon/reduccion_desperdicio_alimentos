@@ -40,17 +40,6 @@ Content-Type: application/json
 }
 # 201 → { id, name, ... }
 
-### Actualizar comercio (solo owner)
-# La app no tiene pantalla de edición de perfil de comercio.
-PATCH {{baseURL}}/commerces/{{commerceId}}
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "name": "Tienda Actualizada"
-}
-# 200 → commerce object actualizado
-
 ### Eliminar comercio (solo owner, en cascada)
 # Sin implementación en Flutter.
 DELETE {{baseURL}}/commerces/{{commerceId}}

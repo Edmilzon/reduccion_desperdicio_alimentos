@@ -3,18 +3,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:reduccion_desperdicio_alimentos/core/services/location_service.dart';
 import 'package:reduccion_desperdicio_alimentos/core/theme/app_colors.dart';
-import 'package:reduccion_desperdicio_alimentos/features/map/data/filter_store.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/data/map_api_service.dart';
 import 'package:reduccion_desperdicio_alimentos/features/map/presentation/map_screen.dart';
-import 'package:reduccion_desperdicio_alimentos/features/map/presentation/widgets/filter_panel.dart';
+import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/data/models/restaurant_detail_model.dart';
+import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/data/repositories/restaurant_detail_repository.dart';
 import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/presentation/screens/restaurant_detail_screen.dart';
+import 'package:reduccion_desperdicio_alimentos/features/restaurant_detail/presentation/widgets/offer_card.dart';
+import '../screens/product_detail_screen.dart';
 import '../widgets/nearby_restaurant_card.dart';
 
 class NearbyRestaurantsScreen extends StatefulWidget {
-  /// Dentro de Tienda → Cercanos: layout compacto sin desbordar.
   final bool embedded;
-
-  /// Pestaña Mapa del menú inferior: carga al activarse.
   final bool isTabActive;
 
   const NearbyRestaurantsScreen({
@@ -31,17 +30,19 @@ class NearbyRestaurantsScreen extends StatefulWidget {
 class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
   final LocationService _locationService = LocationService();
   final MapApiService _mapApiService = MapApiService();
+  final RestaurantDetailRepository _detailRepo = RestaurantDetailRepository();
   final MapController _mapController = MapController();
-  final FilterStore _filters = FilterStore.instance;
 
-  bool _isLoading = false;
   bool _isLoadingList = false;
-  String? _error;
   List<MapCommerceModel> _commerces = [];
   LatLng _mapCenter = const LatLng(-17.423, -66.119);
-  double _mapZoom = 12.0;
+  double _mapZoom = 11.0;
   LatLng? _userLocation;
   bool _hasLoadedOnce = false;
+
+  MapCommerceModel? _selectedCommerce;
+  List<RestaurantOfferModel> _selectedProducts = [];
+  bool _isLoadingProducts = false;
 
   double get _mapHeight => widget.embedded ? 150.0 : 220.0;
 
@@ -67,14 +68,44 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     );
   }
 
-  void _applyCachedData() {
-    final cached = MapApiService.cachedCommerces;
-    if (cached == null || cached.isEmpty) return;
+  void _selectCommerce(MapCommerceModel commerce) {
+    final id = _parseCommerceId(commerce.restaurantId ?? commerce.id);
+    if (id == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('Error: ID de restaurante inválido')),
+      );
+      return;
+    }
+    _mapController.move(LatLng(commerce.latitude, commerce.longitude), 16.0);
     setState(() {
-      _commerces = cached;
-      _isLoading = false;
+      _selectedCommerce = commerce;
+      _selectedProducts = [];
+      _isLoadingProducts = true;
     });
-    if (!widget.embedded) _fitAllMarkers();
+    _loadProducts(id);
+  }
+
+  Future<void> _loadProducts(int commerceId) async {
+    try {
+      final detail = await _detailRepo.getRestaurantDetail(commerceId);
+      if (mounted) {
+        setState(() {
+          _selectedProducts = detail.offers.where((o) => o.isAvailable).toList();
+          _isLoadingProducts = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingProducts = false);
+      }
+    }
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedCommerce = null;
+      _selectedProducts = [];
+    });
   }
 
   void _fitAllMarkers() {
@@ -99,68 +130,47 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
   }
 
   Future<void> _loadNearbyCommerces({bool refresh = false}) async {
+    if (!_hasLoadedOnce && !widget.isTabActive) return;
+
+    _clearSelection();
+
     if (refresh) {
       setState(() => _isLoadingList = true);
-    } else {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-    }
-
-    double lat = _mapCenter.latitude;
-    double lng = _mapCenter.longitude;
-    String? locationWarning;
-
-    try {
-      final position = await _locationService
-          .getCurrentPosition()
-          .timeout(const Duration(seconds: 8));
-      if (!mounted) return;
-      lat = position.latitude;
-      lng = position.longitude;
-      _userLocation = LatLng(lat, lng);
-      _mapCenter = _userLocation!;
-      _mapZoom = 13.0;
-    } catch (e) {
-      locationWarning = e.toString().replaceAll('Exception: ', '');
-      if (!mounted) return;
     }
 
     try {
-      final commerces = await _mapApiService.getNearbyCommerces(
-        lat,
-        lng,
-        radiusKm: _filters.radius,
-        category: _filters.categorySlug,
-      );
+      final commerces = await _mapApiService.getAllCommerces();
 
       if (!mounted) return;
 
       setState(() {
         _commerces = commerces;
         _hasLoadedOnce = true;
-        _error = commerces.isEmpty
-            ? (locationWarning ??
-                'No hay locales registrados. Verifica que el servidor esté activo.')
-            : locationWarning;
       });
 
-      _fitAllMarkers();
-    } catch (e) {
+      if (commerces.isNotEmpty) {
+        _fitAllMarkers();
+      }
+
+      _tryFetchUserLocation();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _hasLoadedOnce = true);
+    } finally {
+      if (mounted) setState(() => _isLoadingList = false);
+    }
+  }
+
+  Future<void> _tryFetchUserLocation() async {
+    try {
+      final position = await _locationService
+          .getCurrentPosition()
+          .timeout(const Duration(seconds: 8));
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
-        _hasLoadedOnce = true;
+        _userLocation = LatLng(position.latitude, position.longitude);
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingList = false;
-        });
-      }
-    }
+    } catch (_) {}
   }
 
   Widget _buildMapSection() {
@@ -180,20 +190,6 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
             fit: StackFit.expand,
             children: [
               _buildMap(),
-              if (_isLoading)
-                Container(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  ),
-                ),
               Positioned(
                 top: 6,
                 right: 6,
@@ -267,17 +263,16 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
         if (_commerces.isNotEmpty)
           MarkerLayer(
             markers: _commerces.map((commerce) {
-              final inactive = !commerce.hasActiveOffers;
               return Marker(
                 point: LatLng(commerce.latitude, commerce.longitude),
                 width: widget.embedded ? 28 : 36,
                 height: widget.embedded ? 28 : 36,
                 alignment: Alignment.center,
                 child: GestureDetector(
-                  onTap: () => _openRestaurantDetail(commerce),
+                  onTap: () => _selectCommerce(commerce),
                   child: Icon(
                     Icons.location_on,
-                    color: inactive ? Colors.grey : Colors.red,
+                    color: Colors.red,
                     size: widget.embedded ? 26 : 32,
                   ),
                 ),
@@ -313,7 +308,7 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
             child: Text(
               widget.embedded
                   ? 'Locales cercanos'
-                  : 'Todos los locales (más cercanos primero)',
+                  : 'Todos los locales',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -337,110 +332,27 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
   @override
   void initState() {
     super.initState();
-    _applyCachedData();
-    _filters.addListener(_onFiltersChanged);
-    if (_filters.activeCategories.isEmpty) {
-      _filters.fetchActiveCategories();
-    }
     if (widget.isTabActive) {
       _loadNearbyCommerces();
     }
-  }
-
-  void _onFiltersChanged() {
-    if (mounted) _loadNearbyCommerces();
   }
 
   @override
   void didUpdateWidget(NearbyRestaurantsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isTabActive && !oldWidget.isTabActive) {
-      _applyCachedData();
-      if (_commerces.isEmpty) {
-        _loadNearbyCommerces();
-      } else {
-        _fitAllMarkers();
-      }
+      _loadNearbyCommerces();
     }
   }
 
   @override
   void dispose() {
-    _filters.removeListener(_onFiltersChanged);
     _mapController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && _commerces.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(height: 12),
-              Text(
-                'Cargando locales...',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!_hasLoadedOnce && !widget.isTabActive && _commerces.isEmpty) {
-      return const Center(
-        child: Text(
-          'Abre esta pestaña para ver el mapa',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      );
-    }
-
-    if (_commerces.isEmpty) {
-      final hasFilters = _filters.hasFilters;
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                hasFilters ? Icons.filter_alt_off : Icons.store_outlined,
-                size: 48,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                hasFilters
-                    ? 'Ningún local coincide con los filtros aplicados'
-                    : (_error ?? 'No se encontraron locales'),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              if (hasFilters)
-                ElevatedButton(
-                  onPressed: () {
-                    _filters.clearFilters();
-                  },
-                  child: const Text('Limpiar filtros'),
-                )
-              else
-                ElevatedButton(
-                  onPressed: _loadNearbyCommerces,
-                  child: const Text('Reintentar'),
-                ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Stack(
       children: [
         RefreshIndicator(
@@ -450,46 +362,22 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildMapSection()),
-              SliverToBoxAdapter(child: _buildFilterBar()),
-              if (_error != null && !_isLoading)
-                SliverToBoxAdapter(
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.orange.shade50,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+              if (_selectedCommerce != null) ...[
+                SliverToBoxAdapter(child: _buildSelectedHeader()),
+                ..._buildProductSlivers(),
+              ],
+              if (_selectedCommerce == null) ...[
+                SliverToBoxAdapter(child: _buildSectionHeader()),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => NearbyRestaurantCard(
+                      commerce: _commerces[index],
+                      onTap: () => _selectCommerce(_commerces[index]),
                     ),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade900,
-                      ),
-                    ),
+                    childCount: _commerces.length,
                   ),
                 ),
-              SliverToBoxAdapter(child: _buildSectionHeader()),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => NearbyRestaurantCard(
-                    commerce: _commerces[index],
-                    onTap: () => _openRestaurantDetail(_commerces[index]),
-                  ),
-                  childCount: _commerces.length,
-                ),
-              ),
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Center(
-                    child: Text(
-                      'Ordenado de menor a mayor distancia',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ),
-                ),
-              ),
+              ],
             ],
           ),
         ),
@@ -504,164 +392,119 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     );
   }
 
-  // ── Barra de filtros activos ──────────────────────────────────
-  Widget _buildFilterBar() {
-    final int count = _filters.activeCount;
+  Widget _buildSelectedHeader() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: AppColors.cardBg,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          // Botón de filtros con badge
           GestureDetector(
-            onTap: () async {
-              final applied = await showFilterPanel(context);
-              if (applied == true && mounted) {
-                _loadNearbyCommerces();
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: count > 0
-                    ? AppColors.primary
-                    : AppColors.cardBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: count > 0
-                      ? AppColors.primary
-                      : Colors.grey.shade300,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tune,
-                    size: 15,
-                    color: count > 0 ? Colors.white : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Filtros',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: count > 0
-                          ? Colors.white
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                  if (count > 0) ...[
-                    const SizedBox(width: 5),
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$count',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            onTap: _clearSelection,
+            child: const Icon(Icons.arrow_back, size: 20, color: AppColors.primary),
           ),
-          const SizedBox(width: 8),
-          // Chips activos
+          const SizedBox(width: 10),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (_filters.radius > 0)
-                    _ActiveFilterChip(
-                      label: '${_filters.radius.toStringAsFixed(0)} km',
-                      onRemove: () {
-                        _filters.setRadius(0);
-                      },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _selectedCommerce?.name ?? '',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (_selectedProducts.isNotEmpty)
+                  Text(
+                    '${_selectedProducts.length} producto${_selectedProducts.length > 1 ? 's' : ''} disponible${_selectedProducts.length > 1 ? 's' : ''}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                     ),
-                  if (_filters.selectedCategory != null)
-                    _ActiveFilterChip(
-                      label: _filters.selectedCategory!.name,
-                      onRemove: () {
-                        _filters.setSelectedCategory(null);
-                      },
-                    ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
-          // Limpiar todos
-          if (count > 0)
-            GestureDetector(
-              onTap: () => _filters.clearFilters(),
-              child: const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  'Limpiar',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+          TextButton(
+            onPressed: () => _openRestaurantDetail(_selectedCommerce!),
+            child: const Text('Ver todo', style: TextStyle(fontSize: 12)),
+          ),
         ],
       ),
     );
   }
-}
 
-/// Chip de filtro activo con botón X para eliminarlo individualmente.
-class _ActiveFilterChip extends StatelessWidget {
-  final String label;
-  final VoidCallback onRemove;
-
-  const _ActiveFilterChip({
-    required this.label,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
+  List<Widget> _buildProductSlivers() {
+    if (_isLoadingProducts) {
+      return [
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             ),
           ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(
-              Icons.close,
-              size: 13,
-              color: AppColors.primary,
+        ),
+      ];
+    }
+    if (_selectedProducts.isEmpty) {
+      return [SliverToBoxAdapter(child: _buildNoProducts())];
+    }
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(
+                    productId: _selectedProducts[index].id,
+                  ),
+                ),
+              ),
+              child: OfferCard(offer: _selectedProducts[index]),
+            ),
+          ),
+          childCount: _selectedProducts.length,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildNoProducts() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.no_food, size: 48, color: AppColors.textLight),
+          const SizedBox(height: 12),
+          const Text(
+            'Sin productos disponibles',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _selectedCommerce?.name != null
+                ? '${_selectedCommerce!.name} no tiene ofertas activas en este momento'
+                : 'No hay ofertas disponibles en este momento',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
             ),
           ),
         ],

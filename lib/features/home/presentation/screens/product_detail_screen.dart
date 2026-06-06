@@ -38,6 +38,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _loadProduct();
   }
 
+  DateTime _boliviaTime(DateTime dt) {
+    return dt.toUtc().subtract(const Duration(hours: 4));
+  }
+
   Future<void> _loadProduct() async {
     setState(() {
       _isLoading = true;
@@ -59,7 +63,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             type: 'bajo_precio',
             productId: product.id,
             title: '¡Precio bajó!',
-            message: '${product.title} ahora está a \$${product.price.toStringAsFixed(2)}',
+            message: '${product.title} ahora está a Bs. ${product.price.toStringAsFixed(2)}',
           );
         }
       }
@@ -103,6 +107,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        actions: [
+          if (_product != null)
+            IconButton(
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.red : AppColors.textPrimary,
+                size: 26,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null
@@ -121,233 +140,120 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                 )
-              : _buildContent(),
+              : _buildBody(),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildBody() {
     final p = _product!;
     final discount = p.discountPercentage;
     final isAvailable = p.isAvailable;
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          backgroundColor: AppColors.background,
-          elevation: 0,
-          pinned: true,
-          expandedHeight: 300,
-          actions: [
-            IconButton(
-              icon: Icon(
-                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: _isFavorite ? Colors.red : Colors.white,
-                size: 28,
+    return Column(
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildImageSection(p, discount, isAvailable)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _buildHeader(p),
+                ),
               ),
-              onPressed: _toggleFavorite,
-            ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                p.imageUrl.isNotEmpty
-                    ? Image.network(p.imageUrl, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image, size: 80, color: Colors.grey),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.shopping_bag, size: 80, color: Colors.grey),
-                      ),
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '-${discount.round()}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isAvailable
-                              ? Colors.green.withValues(alpha: 0.9)
-                              : Colors.red.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isAvailable ? 'Disponible' : 'Agotado',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+              if (_priceDropped)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: _buildPriceDropBanner(),
                   ),
                 ),
-              ],
-            ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildPickupSection(p),
+                ),
+              ),
+              if (p.isExpiringSoon)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildCountdownSection(p),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildInfoGrid(p),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            ],
           ),
         ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        p.category?.name ?? 'Sin categoría',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  p.title,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  p.description,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildPriceSection(p, discount),
-                const SizedBox(height: 24),
-                _buildPickupSection(p),
-                const SizedBox(height: 24),
-                if (p.isExpiringSoon) _buildCountdownSection(p),
-                if (p.isExpiringSoon) const SizedBox(height: 24),
-                _buildInfoSection(p),
-                const SizedBox(height: 24),
-                _buildQuantitySelector(p),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: isAvailable ? () => _addToCart(p) : null,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          isAvailable ? 'Agregar al Carrito' : 'Producto Agotado',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
+        _buildBottomBar(p, isAvailable),
       ],
     );
   }
 
-  Widget _buildQuantitySelector(ProductModel p) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
+  Widget _buildImageSection(ProductModel p, double discount, bool isAvailable) {
+    return SizedBox(
+      height: 220,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          const Text(
-            'Cantidad:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(width: 16),
-          QuantityButton(
-            icon: Icons.remove,
-            size: 36,
-            onPressed: _quantity > 1
-                ? () => setState(() => _quantity--)
-                : null,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              '$_quantity',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          QuantityButton(
-            icon: Icons.add,
-            size: 36,
-            onPressed: _quantity < p.quantity
-                ? () => setState(() => _quantity++)
-                : null,
-          ),
-          const Spacer(),
-          Text(
-            'Stock: ${p.quantity}',
-            style: TextStyle(
-              fontSize: 12,
-              color: p.quantity <= 2 ? Colors.red : AppColors.textSecondary,
-              fontWeight: p.quantity <= 2 ? FontWeight.bold : FontWeight.normal,
+          p.imageUrl.isNotEmpty
+              ? Image.network(p.imageUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image, size: 80, color: Colors.grey),
+                  ),
+                )
+              : Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.shopping_bag, size: 80, color: Colors.grey),
+                ),
+          Positioned(
+            bottom: 12,
+            left: 16,
+            child: Row(
+              children: [
+                if (discount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '-${discount.round()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                if (discount > 0) const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isAvailable
+                        ? Colors.green.withValues(alpha: 0.9)
+                        : Colors.red.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isAvailable ? 'Disponible' : 'Agotado',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -355,96 +261,111 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildPriceSection(ProductModel p, double discount) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          if (_priceDropped)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.trending_down, size: 16, color: Colors.green),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '¡Precio reducido! Antes \$${_previousPrice?.toStringAsFixed(2) ?? ''}',
-                      style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+  Widget _buildHeader(ProductModel p) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (p.category != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    p.category!.name,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
+                ),
+              const SizedBox(height: 8),
+              Text(
+                p.title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              if (p.commerceName != null)
+                Row(
+                  children: [
+                    Icon(Icons.store_outlined, size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      p.commerceName!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'Bs. ${p.price.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
               ),
             ),
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Precio Oferta',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${p.price.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
+            if (p.originalPrice > p.price)
+              Text(
+                'Bs. ${p.originalPrice.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[400],
+                  decoration: TextDecoration.lineThrough,
+                ),
               ),
-              const SizedBox(width: 20),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Precio Regular',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${p.originalPrice.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[400],
-                      decoration: TextDecoration.lineThrough,
-                    ),
-                  ),
-                ],
+            if (p.originalPrice > p.price)
+              Text(
+                'Ahorras Bs. ${(p.originalPrice - p.price).toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Ahorro',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${(p.originalPrice - p.price).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPriceDropBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.trending_down, size: 16, color: Colors.green),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '¡Precio reducido! Antes Bs. ${_previousPrice?.toStringAsFixed(2) ?? ''}',
+              style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -452,73 +373,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildPickupSection(ProductModel p) {
+    final start = _boliviaTime(p.pickupStart);
+    final end = _boliviaTime(p.pickupEnd);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.amber.withValues(alpha: 0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.access_time, size: 20, color: AppColors.darkBrown),
-              SizedBox(width: 8),
-              Text(
-                'Horario de Recogida',
+              const Icon(Icons.access_time, size: 18, color: AppColors.darkBrown),
+              const SizedBox(width: 8),
+              const Text(
+                'Recoger en tienda',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.darkBrown,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Bolivia (UTC-4)',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary.withValues(alpha: 0.7),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const Divider(height: 16, color: AppColors.amber),
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Desde',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDateTime(p.pickupStart),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
+              _buildPickupBlock('Desde', start),
               Container(
                 width: 1,
-                height: 40,
+                height: 36,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
                 color: AppColors.amber.withValues(alpha: 0.3),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Hasta',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDateTime(p.pickupEnd),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildPickupBlock('Hasta', end),
             ],
           ),
         ],
@@ -526,43 +425,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  Widget _buildPickupBlock(String label, DateTime dt) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 2),
+          Text(
+            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          Text(
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.darkBrown),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCountdownSection(ProductModel p) {
+    final minutesLeft = p.pickupEnd.difference(DateTime.now()).inMinutes;
+    final urgent = minutesLeft <= 5;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
-            ? Colors.red.withValues(alpha: 0.08)
-            : AppColors.alertBg,
+        color: urgent ? Colors.red.withValues(alpha: 0.08) : AppColors.alertBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
-              ? Colors.red.withValues(alpha: 0.3)
-              : AppColors.primary.withValues(alpha: 0.3),
+          color: urgent ? Colors.red.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.timer,
-            color: p.pickupEnd.difference(DateTime.now()).inMinutes <= 5
-                ? Colors.red
-                : AppColors.primary,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
+          Icon(Icons.timer, color: urgent ? Colors.red : AppColors.primary, size: 22),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '¡Última oportunidad!',
-                  style: TextStyle(
-                    fontSize: 14,
+                Text(
+                  urgent ? '¡Se acaba!' : 'Última oportunidad',
+                  style: const TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 CountdownTimer(target: p.pickupEnd),
               ],
             ),
@@ -572,9 +484,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildInfoSection(ProductModel p) {
+  Widget _buildInfoGrid(ProductModel p) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(12),
@@ -583,65 +495,124 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Información del Producto',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+            'Detalles',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
-          const SizedBox(height: 12),
-          _buildInfoRow(Icons.inventory_2_outlined, 'Stock', '${p.quantity} unidades disponibles'),
-          const Divider(height: 20),
-          _buildInfoRow(Icons.store_outlined, 'Establecimiento', p.commerceName ?? 'Sin nombre'),
-          const Divider(height: 20),
-          _buildInfoRow(Icons.category_outlined, 'Categoría', p.category?.name ?? 'Sin categoría'),
-          if (p.createdAt != null) ...[
-            const Divider(height: 20),
-            _buildInfoRow(Icons.calendar_today_outlined, 'Publicado', _formatDate(p.createdAt!)),
-          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _infoTile(Icons.inventory_2_outlined, 'Stock', '${p.quantity} u.')),
+              if (p.commerceName != null)
+                Expanded(child: _infoTile(Icons.store_outlined, 'Tienda', p.commerceName!)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (p.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                p.description,
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _infoTile(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              Text(
-                value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+            Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
         ),
       ],
     );
   }
 
-  String _formatDateTime(DateTime dt) {
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '$day/$month ${hour}h${min}';
-  }
-
-  String _formatDate(DateTime dt) {
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final year = dt.year;
-    return '$day/$month/$year';
+  Widget _buildBottomBar(ProductModel p, bool isAvailable) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: AppColors.cardBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  QuantityButton(
+                    icon: Icons.remove,
+                    size: 32,
+                    onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      '$_quantity',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  QuantityButton(
+                    icon: Icons.add,
+                    size: 32,
+                    onPressed: _quantity < p.quantity ? () => setState(() => _quantity++) : null,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isAvailable ? AppColors.primary : Colors.grey,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isAvailable ? () => _addToCart(p) : null,
+                  child: Text(
+                    isAvailable ? 'Agregar al Carrito' : 'Agotado',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _addToCart(ProductModel p) async {
@@ -657,7 +628,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       pickupEnd: p.pickupEnd,
     );
     await _cartRepo.addItem(cartItem, p.quantity);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -677,5 +648,3 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 }
-
-

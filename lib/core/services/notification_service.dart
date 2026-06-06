@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static void Function(String? payload)? onNotificationOpened;
 
   static Future<void> init() async {
     if (_initialized) return;
@@ -70,7 +73,39 @@ class NotificationService {
   }
 
   static void _onNotificationTap(NotificationResponse response) {
-    // Navigation handler — reserved for future use
+    onNotificationOpened?.call(response.payload);
+  }
+
+  static Future<bool> requestPermission() async {
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin == null) return false;
+    final granted = await androidPlugin.requestNotificationsPermission();
+    return granted ?? false;
+  }
+
+  static const List<String> allChannelIds = [
+    'merchant_new_order',
+    'merchant_expiring',
+    'pickup_reminder',
+    'geofence_code',
+    'favorites_expiring',
+    'order_reminder',
+  ];
+
+  static Future<bool> isChannelEnabled(String channelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('notif_$channelId') ?? true;
+  }
+
+  static Future<void> setChannelEnabled(String channelId, bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notif_$channelId', enabled);
+  }
+
+  static Future<Map<String, bool>> getAllChannelStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {for (final id in allChannelIds) id: prefs.getBool('notif_$id') ?? true};
   }
 
   static Future<void> showWithChannel({
@@ -80,8 +115,11 @@ class NotificationService {
     required String channelId,
     String? payload,
   }) async {
+    if (!await isChannelEnabled(channelId)) return;
+
     final channelLabel = _channelLabels[channelId] ?? channelId;
     final channelDesc = 'Notificaciones del canal $channelId';
+    final unreadCount = await _getUnreadCount();
 
     final androidDetails = AndroidNotificationDetails(
       channelId,
@@ -92,6 +130,7 @@ class NotificationService {
       showWhen: true,
       enableVibration: true,
       playSound: true,
+      number: unreadCount,
     );
 
     final details = NotificationDetails(
@@ -100,6 +139,18 @@ class NotificationService {
     );
 
     await _plugin.show(id, title, body, details, payload: payload);
+  }
+
+  static Future<int> _getUnreadCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString('alerts');
+      if (data == null) return 0;
+      final list = jsonDecode(data) as List<dynamic>;
+      return list.where((e) => (e as Map)['read'] != true).length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   static const Map<String, String> _channelLabels = {

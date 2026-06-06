@@ -484,8 +484,8 @@ class _OrderResult {
 
 class _CartItemCard extends StatelessWidget {
   final CartItem item;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
   final VoidCallback onRemove;
 
   const _CartItemCard({
@@ -494,6 +494,9 @@ class _CartItemCard extends StatelessWidget {
     required this.onDecrement,
     required this.onRemove,
   });
+
+  bool get _atMaxStock => item.quantity >= item.stock;
+  bool get _atMinStock => item.quantity <= 1;
 
   @override
   Widget build(BuildContext context) {
@@ -560,7 +563,7 @@ class _CartItemCard extends StatelessWidget {
                 children: [
                   QuantityButton(
                     icon: Icons.remove,
-                    onPressed: onDecrement,
+                    onPressed: _atMinStock ? null : onDecrement,
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -574,7 +577,7 @@ class _CartItemCard extends StatelessWidget {
                   ),
                   QuantityButton(
                     icon: Icons.add,
-                    onPressed: onIncrement,
+                    onPressed: _atMaxStock ? null : onIncrement,
                   ),
                 ],
               ),

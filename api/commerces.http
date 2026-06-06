@@ -1,4 +1,4 @@
-@baseURL = http://localhost:5000
+@baseURL = https://reduccion-desperdicio-backend.vercel.app
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIwLCJlbWFpbCI6ImNvbWVyY2lhbnRlX3Rlc3RfMTc3OTQ4ODYwNEB0ZXN0LmNvbSIsInJvbGUiOiJtZXJjaGFudCIsImlhdCI6MTc3OTQ4ODYwOCwiZXhwIjoxNzc5NTc1MDA4fQ.yENiTVhCTwsrnAsoAeR9144iGJPsPkKjS3u66hX9XW0
 @commerceId = 1
 

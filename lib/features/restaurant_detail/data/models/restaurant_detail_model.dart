@@ -3,8 +3,6 @@ class RestaurantDetailModel {
   final String name;
   final String? description;
   final String? address;
-  final String? openTime;
-  final String? closeTime;
   final double? latitude;
   final double? longitude;
   final String? nit;
@@ -15,8 +13,6 @@ class RestaurantDetailModel {
     required this.name,
     this.description,
     this.address,
-    this.openTime,
-    this.closeTime,
     this.latitude,
     this.longitude,
     this.nit,
@@ -33,8 +29,6 @@ class RestaurantDetailModel {
       name: commerceData['name']?.toString() ?? '',
       description: commerceData['description']?.toString(),
       address: commerceData['address']?.toString(),
-      openTime: commerceData['openTime']?.toString(),
-      closeTime: commerceData['closeTime']?.toString(),
       latitude: _parseDouble(commerceData['latitude']),
       longitude: _parseDouble(commerceData['longitude']),
       nit: commerceData['nit']?.toString(),
@@ -55,13 +49,6 @@ class RestaurantDetailModel {
 
   bool get hasCoordinates => latitude != null && longitude != null;
   bool get hasOffers => offers.isNotEmpty;
-
-  String get scheduleText {
-    if (openTime != null && closeTime != null) {
-      return '$openTime - $closeTime';
-    }
-    return 'Horario no disponible';
-  }
 }
 
 class RestaurantOfferModel {
@@ -118,5 +105,5 @@ class RestaurantOfferModel {
     return 0;
   }
 
-  bool get isAvailable => status == 'active' && quantity > 0;
+  bool get isAvailable => status == 'active' && quantity > 0 && pickupEnd.isAfter(DateTime.now());
 }

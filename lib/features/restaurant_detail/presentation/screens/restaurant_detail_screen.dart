@@ -166,12 +166,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
               text: detail.address!,
               color: AppColors.secondary,
             ),
-          const SizedBox(height: 8),
-          _InfoChip(
-            icon: Icons.access_time,
-            text: detail.scheduleText,
-            color: AppColors.olive,
-          ),
           if (detail.hasCoordinates) ...[
             const SizedBox(height: 16),
             SizedBox(

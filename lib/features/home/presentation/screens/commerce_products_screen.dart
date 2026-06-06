@@ -40,7 +40,7 @@ class _CommerceProductsScreenState extends State<CommerceProductsScreen> {
     try {
       final products = await _repository.getProductsByCommerce(widget.commerce.id);
       setState(() {
-        _products = products;
+        _products = products.where((p) => p.isAvailable).toList();
         _isLoading = false;
       });
     } catch (e) {

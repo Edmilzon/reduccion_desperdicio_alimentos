@@ -95,7 +95,7 @@ class DashboardRepository {
     if (commerceId == null) throw Exception('No hay comercio asociado. Inicia sesión como comerciante.');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/commerces/$commerceId/products'),
+      Uri.parse('$baseUrl/products/commerce/$commerceId?status=all'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -103,9 +103,8 @@ class DashboardRepository {
     ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List<dynamic> products = data['products'] ?? [];
-      return products.map((json) => OfertaModel.fromJson(json)).toList();
+      final List<dynamic> products = jsonDecode(response.body) as List<dynamic>? ?? [];
+      return products.map((json) => OfertaModel.fromJson(json as Map<String, dynamic>)).toList();
     } else {
       throw Exception('Error al cargar ofertas');
     }

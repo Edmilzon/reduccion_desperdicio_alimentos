@@ -35,16 +35,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final commerceId = await _repo.getCommerceIdInt();
       if (!mounted) return;
-      final stats = await _repo.getDashboardStats(commerceId.toString());
+
+      final stats = _repo.getDashboardStats(commerceId.toString());
+      final ofertas = _repo.getMisOfertas();
+      final orders = _orderRepo.getMerchantOrders();
+
+      final results = await Future.wait([stats, ofertas, orders],
+        eagerError: false,
+      );
+
       if (!mounted) return;
-      final ofertas = await _repo.getMisOfertas();
-      if (!mounted) return;
-      setState(() { _stats = stats; _ofertas = ofertas; _isLoading = false; });
+      setState(() {
+        _stats = results[0] as Map<String, dynamic>;
+        _ofertas = results[1] as List<OfertaModel>;
+        _orders = results[2] as List<OrderModel>;
+        _isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       try {
         final ofertas = await _repo.getMisOfertas();
-        if (!mounted) return;
         List<OrderModel> orders = [];
         try {
           orders = await _orderRepo.getMerchantOrders();
@@ -109,39 +119,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  double get _ventas {
-    if (_stats != null) {
-      return (_stats!['todaySales'] ?? _stats!['ventasTotales'] ?? _stats!['totalRevenue'] ?? 0).toDouble();
-    }
-    final hoy = DateTime.now();
-    final pedidosHoy = _orders.where((o) =>
-      o.createdAt != null &&
-      o.createdAt!.day == hoy.day &&
-      o.createdAt!.month == hoy.month &&
-      o.createdAt!.year == hoy.year
-    );
-    return pedidosHoy.fold<double>(0, (sum, o) => sum + o.totalPrice);
-  }
-
-  int get _ofertasActivas => _stats?['activeOffers'] ?? _stats?['productosActivos'] ?? _stats?['activeProducts'] ?? _ofertas.where((o) => o.isActive).length;
-
-  int get _unidsVendidas {
-    if (_stats != null) {
-      return (_stats!['totalUnitsSold'] ?? _stats!['productosVendidos'] ?? _stats!['soldProducts'] ?? 0);
-    }
-    return _orders.where((o) => o.isDelivered).fold<int>(0, (sum, o) => sum + o.quantity);
-  }
-
-  int get _pedidosHoy {
-    if (_stats != null) return _stats!['todayOrders'] ?? 0;
+  List<OrderModel> get _pedidosDeHoy {
     final hoy = DateTime.now();
     return _orders.where((o) =>
       o.createdAt != null &&
       o.createdAt!.day == hoy.day &&
       o.createdAt!.month == hoy.month &&
       o.createdAt!.year == hoy.year
-    ).length;
+    ).toList();
   }
+
+  double get _ventas {
+    return _pedidosDeHoy.fold<double>(0, (sum, o) => sum + o.totalPrice);
+  }
+
+  int get _ofertasActivas => _stats?['activeOffers'] ?? _ofertas.where((o) => o.isActive).length;
+
+  int get _unidsVendidas {
+    return _pedidosDeHoy.fold<int>(0, (sum, o) => sum + o.quantity);
+  }
+
+  int get _pedidosHoy => _pedidosDeHoy.length;
 
   int get _ofertasHoy => _stats?['todayOffers'] ?? 0;
   int get _proxVencer => _stats?['nearExpiryCount'] ?? 0;
@@ -396,7 +394,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ...(_nearExpiryOffers.take(5).map((offer) {
             final title = offer['title'] ?? offer['nombre'] ?? 'Producto';
             final qty = offer['quantity'] ?? 0;
-            final price = offer['price'] ?? 0;
+            final price = double.tryParse(offer['price']?.toString() ?? '') ?? 0;
             final pickupEnd = offer['pickupEnd'] != null
                 ? DateTime.tryParse(offer['pickupEnd'].toString())
                 : null;

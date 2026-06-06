@@ -167,6 +167,14 @@ class AuthRepository {
         if (commerceName != null) {
           await prefs.setString(commerceNameKey, commerceName);
         }
+        final commerceDesc = commerce['description']?.toString();
+        if (commerceDesc != null) {
+          await prefs.setString('commerce_description', commerceDesc);
+        }
+        final commerceNit = commerce['nit']?.toString();
+        if (commerceNit != null) {
+          await prefs.setString('commerce_nit', commerceNit);
+        }
       }
       return user;
     }
@@ -229,14 +237,90 @@ class AuthRepository {
     await prefs.setString(_tokenKey, auth.accessToken);
     await prefs.setString(_userKey, jsonEncode(auth.user.toJson()));
     if (auth.commerce != null) {
-await prefs.setString(commerceIdKey, auth.commerce!.id);
-        await prefs.setString(commerceNameKey, auth.commerce!.name);
+      final c = auth.commerce!;
+      await prefs.setString(commerceIdKey, c.id);
+      await prefs.setString(commerceNameKey, c.name);
+      if (c.description != null) await prefs.setString('commerce_description', c.description!);
+      if (c.nit != null) await prefs.setString('commerce_nit', c.nit!);
+    }
+  }
+
+  Future<void> _saveUserData(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(user.toJson()));
+  }
+
+  Future<UserModel> updateProfile({required String name}) async {
+    final token = await getToken();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'name': name}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final user = UserModel.fromJson(data['user'] ?? data);
+      await _saveUserData(user);
+      return user;
+    }
+    throw _parseError(response);
+  }
+
+  Future<void> updateCommerce({
+    required String commerceId,
+    String? name,
+    String? description,
+    String? nit,
+  }) async {
+    final token = await getToken();
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (description != null) body['description'] = description;
+    if (nit != null) body['nit'] = nit;
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/commerces/$commerceId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      if (data['name'] != null) {
+        await prefs.setString(commerceNameKey, data['name'] as String);
       }
+      if (data['description'] != null) {
+        await prefs.setString('commerce_description', data['description'] as String);
+      }
+      if (data['nit'] != null) {
+        await prefs.setString('commerce_nit', data['nit'] as String);
+      }
+      return;
+    }
+    throw _parseError(response);
   }
 
   Future<String?> getCommerceId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(commerceIdKey);
+  }
+
+  Future<String?> getCommerceDescription() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('commerce_description');
+  }
+
+  Future<String?> getCommerceNit() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('commerce_nit');
   }
 
   Exception _parseError(http.Response response) {

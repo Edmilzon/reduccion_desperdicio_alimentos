@@ -64,6 +64,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           children: [
             Center(
               child: Container(
+                width: 212,
+                height: 212,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -74,6 +76,26 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   version: QrVersions.auto,
                   size: 180,
                   backgroundColor: Colors.white,
+                  errorStateBuilder: (_, __) => Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.grey, size: 32),
+                        const SizedBox(height: 4),
+                        Text(
+                          qrData,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

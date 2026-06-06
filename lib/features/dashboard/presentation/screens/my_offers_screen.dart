@@ -71,7 +71,7 @@ class _MyOffersScreenState extends State<MyOffersScreen>
 
   List<OfertaModel> get _actuales {
     final now = DateTime.now();
-    final lista = _ofertas.where((o) => o.isActive).toList();
+    final lista = _ofertas.where((o) => o.isActive && o.pickupEnd.isAfter(now)).toList();
     lista.sort((a, b) {
       final aUpcoming = a.pickupStart.isAfter(now);
       final bUpcoming = b.pickupStart.isAfter(now);
@@ -84,7 +84,8 @@ class _MyOffersScreenState extends State<MyOffersScreen>
   }
 
   List<OfertaModel> get _historial {
-    final lista = _ofertas.where((o) => o.isSold).toList();
+    final now = DateTime.now();
+    final lista = _ofertas.where((o) => !(o.isActive && o.pickupEnd.isAfter(now))).toList();
     lista.sort((a, b) => b.pickupEnd.compareTo(a.pickupEnd));
     return lista;
   }

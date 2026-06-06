@@ -15,6 +15,7 @@ class MapCommerceModel {
   final bool hasActiveOffers;
   final String? pickupLimit;
   final String? description;
+  final String? ownerEmail;
 
   MapCommerceModel({
     required this.id,
@@ -29,15 +30,16 @@ class MapCommerceModel {
     this.hasActiveOffers = false,
     this.pickupLimit,
     this.description,
+    this.ownerEmail,
   });
 
   factory MapCommerceModel.fromJson(Map<String, dynamic> json) {
+    final owner = json['owner'] as Map<String, dynamic>?;
     return MapCommerceModel(
       id: json['id']?.toString() ?? '',
       restaurantId: json['restaurantId']?.toString(),
       name: json['name'] ?? '',
       branchName: json['branchName'] ?? '',
-      // Algunos parseos defensivos para asegurar que sean double
       latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
       distance: json['distance'] != null
@@ -49,6 +51,7 @@ class MapCommerceModel {
       hasActiveOffers: json['hasActiveOffers'] ?? false,
       pickupLimit: json['pickupLimit']?.toString(),
       description: json['description']?.toString(),
+      ownerEmail: owner?['email']?.toString(),
     );
   }
 }
@@ -60,19 +63,8 @@ class MapApiService {
 
   static List<MapCommerceModel>? get cachedCommerces => _cachedCommerces;
 
-  /// [radiusKm] 0 = todos los locales, ordenados por distancia (más cercano primero).
-  Future<List<MapCommerceModel>> getNearbyCommerces(
-    double lat,
-    double lng, {
-    double radiusKm = 0,
-    String? category,
-  }) async {
-    final params = StringBuffer();
-    params.write('lat=$lat&lng=$lng&radius=$radiusKm');
-    if (category != null && category.isNotEmpty) {
-      params.write('&category=$category');
-    }
-    final uri = Uri.parse('$baseUrl/commerces/nearby?$params');
+  Future<List<MapCommerceModel>> getAllCommerces() async {
+    final uri = Uri.parse('$baseUrl/commerces');
     final response = await http
         .get(uri)
         .timeout(const Duration(seconds: 15));
@@ -84,12 +76,10 @@ class MapApiService {
       } catch (_) {
         throw Exception('Error al procesar la respuesta del servidor');
       }
-      final list = data.map((json) => MapCommerceModel.fromJson(json as Map<String, dynamic>)).toList();
-      _cachedCommerces = list;
-      return list;
+      return data.map((json) => MapCommerceModel.fromJson(json as Map<String, dynamic>)).toList();
     } else {
       throw Exception(
-        'Error al obtener comercios cercanos (${response.statusCode})',
+        'Error al obtener comercios (${response.statusCode})',
       );
     }
   }

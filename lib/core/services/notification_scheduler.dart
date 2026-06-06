@@ -22,6 +22,10 @@ class NotificationScheduler {
     _timer = null;
   }
 
+  static void checkNow() {
+    _check(); // fire-and-forget, same pattern as start()
+  }
+
   static Future<void> _check() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -32,7 +36,7 @@ class NotificationScheduler {
           ? _extractRole(prefs.getString('auth_user')!)
           : null;
 
-      if (role == 'merchant') {
+      if (role?.toUpperCase() == 'MERCHANT') {
         await _checkMerchantNotifications();
       } else {
         await _checkClientNotifications();

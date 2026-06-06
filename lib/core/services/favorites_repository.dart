@@ -57,7 +57,7 @@ class CachedFavoriteProduct {
     return 0;
   }
 
-  bool get isAvailable => quantity > 0 && status == 'active';
+  bool get isAvailable => quantity > 0 && status == 'active' && pickupEnd.isAfter(DateTime.now());
 
   bool get isExpiringSoon {
     final diff = pickupEnd.difference(DateTime.now());
