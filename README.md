@@ -83,3 +83,5 @@ lib/
 ├── shared/                       # Widgets reutilizables
 └── routes/                       # Definición de rutas
 ```
+
+Ultima version de la APK
